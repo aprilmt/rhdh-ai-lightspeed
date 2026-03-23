@@ -255,6 +255,33 @@ export default function Home() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
           {/* Chat Messages & Content Area */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative bg-background">
+            {activeTab === "notebooks" ? (
+              /* Notebooks Empty State - PatternFly 6 Style */
+              <div className="flex flex-col items-center justify-center h-full px-4">
+                <div className="flex flex-col items-center max-w-[400px] text-center">
+                  {/* Icon */}
+                  <div className="size-[54px] mb-4 text-[#6a6e73]">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="size-full">
+                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>
+                    </svg>
+                  </div>
+                  {/* Title */}
+                  <h2 className="text-xl font-medium text-[#151515] mb-2">Coming soon</h2>
+                  {/* Body */}
+                  <p className="text-sm text-[#6a6e73] mb-6">
+                    Notebooks ground the AI's answers strictly in the user's provided data, providing highly accurate, citation-backed answers for onboarding, architecture reviews, or project-specific troubleshooting.
+                  </p>
+                  {/* Secondary action */}
+                  <button 
+                    onClick={() => setActiveTab("chat")}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Go to Chat
+                  </button>
+                </div>
+              </div>
+            ) : (
+            <>
             {/* Toggle buttons and divider */}
             <div className="absolute top-4 left-4 z-10 flex items-start gap-4">
               <div className="flex flex-col gap-2">
@@ -465,6 +492,8 @@ export default function Home() {
                 </button>
               </div>
             </div>
+            </>
+            )}
           </div>
         </div>
 
