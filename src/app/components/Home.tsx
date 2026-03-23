@@ -26,6 +26,7 @@ export default function Home() {
   const [leftPanelWidth, setLeftPanelWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
   const [showMcpPromo, setShowMcpPromo] = useState(true);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -390,11 +391,39 @@ export default function Home() {
                 
                 {/* Plus Icon - Far Left */}
                 <div className="absolute left-[6px] bottom-[12px] z-10">
-                  <button className="size-[20px] hover:opacity-70 transition-opacity">
-                    <svg className="block size-full mx-[16px] my-[0px]" fill="none" preserveAspectRatio="none" viewBox="0 0 11.5 11.5">
-                      <path d={svgPaths.pe763897} stroke="var(--muted-foreground)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                    </svg>
-                  </button>
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowAttachMenu(!showAttachMenu)}
+                      className="size-[20px] hover:opacity-70 transition-opacity"
+                    >
+                      <svg className="block size-full mx-[16px] my-[0px]" fill="none" preserveAspectRatio="none" viewBox="0 0 11.5 11.5">
+                        <path d={svgPaths.pe763897} stroke="var(--muted-foreground)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                      </svg>
+                    </button>
+
+                    {/* Attach Menu */}
+                    {showAttachMenu && (
+                      <div className="absolute bottom-full left-0 mb-3 bg-white rounded-xl shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] border border-border min-w-[280px] z-50">
+                        <button
+                          onClick={() => {
+                            setShowAttachMenu(false);
+                            alert("Attach file");
+                          }}
+                          className="w-full px-4 py-3 flex items-start gap-3 hover:bg-secondary/50 rounded-xl transition-colors text-left"
+                        >
+                          <div className="size-[24px] text-muted-foreground mt-0.5">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-full">
+                              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">Attach</p>
+                            <p className="text-sm text-muted-foreground">Attach a JSON, YAML, TXT, or XML file</p>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Model Selector - Separate */}
