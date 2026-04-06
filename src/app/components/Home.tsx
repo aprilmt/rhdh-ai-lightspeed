@@ -27,6 +27,7 @@ export default function Home() {
   const [isResizing, setIsResizing] = useState(false);
   const [showMcpPromo, setShowMcpPromo] = useState(true);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [notebookMenuOpen, setNotebookMenuOpen] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -257,28 +258,152 @@ export default function Home() {
           {/* Chat Messages & Content Area */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative bg-background">
             {activeTab === "notebooks" ? (
-              /* Notebooks Empty State - PatternFly 6 Style */
-              <div className="flex flex-col items-center justify-center h-full px-4">
-                <div className="flex flex-col items-center max-w-[400px] text-center">
-                  {/* Icon */}
-                  <div className="size-[54px] mb-4 text-[#6a6e73]">
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="size-full">
-                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>
+              /* Notebooks Page - My Notebooks */
+              <div className="p-6">
+                {/* Header with title and create button */}
+                <div className="flex items-center justify-between mb-6">
+                  <h1 className="text-xl font-semibold text-[#151515]">My Notebooks</h1>
+                  <button className="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors">
+                    <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
-                  </div>
-                  {/* Title */}
-                  <h2 className="text-xl font-medium text-[#151515] mb-2">Coming soon</h2>
-                  {/* Body */}
-                  <p className="text-sm text-[#6a6e73] mb-6">
-                    Notebooks ground the AI's answers strictly in the user's provided data, providing highly accurate, citation-backed answers for onboarding, architecture reviews, or project-specific troubleshooting.
-                  </p>
-                  {/* Secondary action */}
-                  <button 
-                    onClick={() => setActiveTab("chat")}
-                    className="text-sm text-primary hover:underline"
-                  >
-                    Go to Chat
+                    Create new notebook
                   </button>
+                </div>
+                
+                {/* Notebook cards grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {/* Onboarding RHDH */}
+                  <div className="bg-white border border-border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group min-h-[120px]">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="size-5 text-primary">
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                            <path d="M7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>
+                          </svg>
+                        </div>
+                        <span className="font-medium text-[#151515]">Onboarding RHDH</span>
+                      </div>
+                      <div className="relative">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(notebookMenuOpen === 0 ? null : 0); }}
+                          className="text-muted-foreground hover:text-foreground p-1"
+                        >
+                          <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="5" r="2"/>
+                            <circle cx="12" cy="12" r="2"/>
+                            <circle cx="12" cy="19" r="2"/>
+                          </svg>
+                        </button>
+                        {notebookMenuOpen === 0 && (
+                          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] py-1 min-w-[150px] z-50">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
+                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
+                            >
+                              Rename
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
+                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">3 Documents</p>
+                  </div>
+                  
+                  {/* CI/CD Pipeline */}
+                  <div className="bg-white border border-border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group min-h-[120px]">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="size-5 text-primary">
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                            <path d="M7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>
+                          </svg>
+                        </div>
+                        <span className="font-medium text-[#151515]">CI/CD Pipeline</span>
+                      </div>
+                      <div className="relative">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(notebookMenuOpen === 1 ? null : 1); }}
+                          className="text-muted-foreground hover:text-foreground p-1"
+                        >
+                          <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="5" r="2"/>
+                            <circle cx="12" cy="12" r="2"/>
+                            <circle cx="12" cy="19" r="2"/>
+                          </svg>
+                        </button>
+                        {notebookMenuOpen === 1 && (
+                          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] py-1 min-w-[150px] z-50">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
+                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
+                            >
+                              Rename
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
+                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">3 Documents</p>
+                  </div>
+                  
+                  {/* Untitled notebook */}
+                  <div className="bg-white border border-border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group min-h-[120px]">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="size-5 text-primary">
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                            <path d="M7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>
+                          </svg>
+                        </div>
+                        <span className="font-medium text-[#151515]">Untitled notebook</span>
+                      </div>
+                      <div className="relative">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(notebookMenuOpen === 2 ? null : 2); }}
+                          className="text-muted-foreground hover:text-foreground p-1"
+                        >
+                          <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="5" r="2"/>
+                            <circle cx="12" cy="12" r="2"/>
+                            <circle cx="12" cy="19" r="2"/>
+                          </svg>
+                        </button>
+                        {notebookMenuOpen === 2 && (
+                          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] py-1 min-w-[150px] z-50">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
+                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
+                            >
+                              Rename
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
+                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">0 Documents</p>
+                  </div>
                 </div>
               </div>
             ) : (
