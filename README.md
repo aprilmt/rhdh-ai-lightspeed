@@ -1,7 +1,7 @@
 
   # Lightspeed prototype
 
-  This is a code bundle for Lightspeed prototype. The original project is available at https://www.figma.com/design/GvMUpxeZKylHenpvmwnsxG/Lightspeed-prototype.
+  This is a code bundle for Lightspeed prototype. The live page is available at https://aprilmt.github.io/rhdh-ai-lightspeed/.
 
   ## Running the code
 
