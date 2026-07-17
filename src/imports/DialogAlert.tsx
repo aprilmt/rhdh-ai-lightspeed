@@ -3,6 +3,8 @@ import svgPaths from "./svg-odlfft3nuv";
 interface DialogAlertProps {
   onClose?: () => void;
   onSave?: () => void;
+  serverName?: string;
+  error?: boolean;
 }
 
 function PrimaryHover() {
@@ -82,20 +84,20 @@ function StateLayer() {
   );
 }
 
-function TextField() {
+function TextField({ error = false }: { error?: boolean }) {
   return (
     <div className="content-stretch flex flex-col items-start relative rounded-[6px] shrink-0 w-full" data-name="text field">
-      <div aria-hidden="true" className="absolute border-2 border-[#06c] border-solid inset-0 pointer-events-none rounded-[6px]" />
+      <div aria-hidden="true" className={`absolute border-2 border-solid inset-0 pointer-events-none rounded-[6px] ${error ? "border-[#c9190b]" : "border-[#06c]"}`} />
       <StateLayer />
     </div>
   );
 }
 
-function SupportingText() {
+function SupportingText({ error = false }: { error?: boolean }) {
   return (
     <div className="relative shrink-0 w-full" data-name="supporting-text">
       <div className="content-stretch flex items-start pt-[4px] px-[16px] relative w-full">
-        <p className="flex-[1_0_0] font-['Red_Hat_Text:Regular',sans-serif] font-normal leading-[16px] min-h-px min-w-px relative text-[#4d4d4d] text-[12px]">Enter your token</p>
+        <p className={`flex-[1_0_0] font-['Red_Hat_Text:Regular',sans-serif] font-normal leading-[16px] min-h-px min-w-px relative text-[12px] ${error ? "text-[#c9190b]" : "text-[#4d4d4d]"}`}>{error ? "Error access token, please try again" : "Enter your token"}</p>
       </div>
     </div>
   );
@@ -123,7 +125,7 @@ function Container() {
   );
 }
 
-export default function DialogAlert({ onClose, onSave }: DialogAlertProps) {
+export default function DialogAlert({ onClose, onSave, serverName = "GitHub", error = false }: DialogAlertProps) {
   return (
     <div className="relative size-full" data-name="Dialog Alert">
       <div className="-translate-y-1/2 absolute bg-white h-[326px] left-0 rounded-[24px] shadow-[0px_10px_20px_0px_rgba(41,41,41,0.15)] top-1/2 w-[608px]" />
@@ -149,9 +151,9 @@ export default function DialogAlert({ onClose, onSave }: DialogAlertProps) {
         <div className="absolute bg-white right-[16px] rounded-[1000px] size-[40px] top-[16px]" data-name="Background" />
         <CloseIcon />
       </button>
-      <p className="absolute font-['Red_Hat_Text:Regular',sans-serif] font-normal leading-[24px] left-[24px] text-[#4d4d4d] text-[14px] top-[66px] w-[560px]">Credentials are encrypted at rest and scoped to your profile. Lightspeed will operate with your exact GitHub permissions.</p>
+      <p className="absolute font-['Red_Hat_Text:Regular',sans-serif] font-normal leading-[24px] left-[24px] text-[#4d4d4d] text-[14px] top-[66px] w-[560px]">Credentials are encrypted at rest and scoped to your profile. Lightspeed will operate with your exact {serverName} permissions.</p>
       <div className="-translate-y-1/2 absolute flex flex-col font-['Red_Hat_Text:Medium',sans-serif] font-medium justify-center leading-[0] left-[55px] text-[#151515] text-[20px] top-[37px] tracking-[-0.25px] whitespace-nowrap">
-        <p className="leading-[26px]">Configure GitHub Server</p>
+        <p className="leading-[26px]">Configure {serverName} Server</p>
       </div>
       <div className="absolute left-[27px] size-[18px] top-[26px]" data-name="fa-lock">
         <div className="absolute inset-[0_4.17%_0_8.33%]" data-name="lock">
@@ -161,8 +163,8 @@ export default function DialogAlert({ onClose, onSave }: DialogAlertProps) {
         </div>
       </div>
       <div className="absolute content-stretch flex flex-col h-[56px] items-start left-[24px] rounded-tl-[4px] rounded-tr-[4px] top-[146px] w-[553px]" data-name="Text field">
-        <TextField />
-        <SupportingText />
+        <TextField error={error} />
+        <SupportingText error={error} />
       </div>
       <div className="absolute content-stretch cursor-pointer flex flex-col items-center justify-center left-[524px] size-[48px] top-[150px]" data-name="trailing-icon">
         <Container />

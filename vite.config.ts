@@ -7,6 +7,14 @@ const base = process.env.BASE_PATH || '/'
 
 export default defineConfig({
   base,
+  server: {
+    // fsevents-based watching is unreliable in this environment, so fall back
+    // to polling to guarantee HMR picks up file changes.
+    watch: {
+      usePolling: true,
+      interval: 200,
+    },
+  },
   plugins: [
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them

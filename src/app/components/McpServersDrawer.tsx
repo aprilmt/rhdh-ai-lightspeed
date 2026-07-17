@@ -8,6 +8,7 @@ interface McpServer {
   enabled: boolean;
   status: "active" | "disabled" | "failed" | "token-required";
   tools?: number;
+  requiresToken?: boolean;
 }
 
 interface SavedPrompt {
@@ -26,7 +27,7 @@ interface McpServersDrawerProps {
 export default function McpServersDrawer({ isOpen, onClose, onUsePrompt }: McpServersDrawerProps) {
   const [activeTab, setActiveTab] = useState<"servers" | "prompts">("servers");
   const [servers, setServers] = useState<McpServer[]>([
-    { name: "Github", enabled: false, status: "token-required", tools: 0 },
+    { name: "Github", enabled: false, status: "token-required", tools: 0, requiresToken: true },
     { name: "Dynatrace", enabled: false, status: "disabled", tools: 0 },
     { name: "Openshift", enabled: true, status: "active", tools: 7 },
     { name: "Kubernetes", enabled: false, status: "disabled", tools: 0 },
@@ -91,9 +92,24 @@ export default function McpServersDrawer({ isOpen, onClose, onUsePrompt }: McpSe
 
   const toggleServer = (index: number) => {
     setServers(prevServers =>
-      prevServers.map((server, i) =>
-        i === index ? { ...server, enabled: !server.enabled } : server
-      )
+      prevServers.map((server, i) => {
+        if (i !== index) return server;
+
+        const enabled = !server.enabled;
+
+        // A server that requires a token becomes active with tools once turned
+        // on, and reverts to the "Token required" state when turned back off.
+        if (server.requiresToken) {
+          return {
+            ...server,
+            enabled,
+            status: enabled ? "active" : "token-required",
+            tools: enabled ? 4 : 0,
+          };
+        }
+
+        return { ...server, enabled };
+      })
     );
   };
 
@@ -232,7 +248,7 @@ export default function McpServersDrawer({ isOpen, onClose, onUsePrompt }: McpSe
           <>
             {/* Subtitle */}
             <div className="px-4 pt-4 pb-2">
-              <p className="text-xs text-muted-foreground">3 of 8 selected</p>
+              <p className="text-xs text-muted-foreground">{servers.filter(s => s.enabled).length} of {servers.length} selected</p>
             </div>
 
             {/* Table Header */}
@@ -321,7 +337,7 @@ export default function McpServersDrawer({ isOpen, onClose, onUsePrompt }: McpSe
                   </div>
 
                   {/* Edit Button */}
-                  {server.name !== "Figma" && server.name !== "Dynatrace" ? (
+                  {server.name !== "Dynatrace" ? (
                     <button
                       className="shrink-0 size-[19px] hover:opacity-70 transition-opacity"
                       onClick={() => setEditingServerIndex(index)}
@@ -340,6 +356,8 @@ export default function McpServersDrawer({ isOpen, onClose, onUsePrompt }: McpSe
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditingServerIndex(null)}>
                 <div className="w-[608px] h-[326px]" onClick={(e) => e.stopPropagation()}>
                   <DialogAlert 
+                    serverName={servers[editingServerIndex].name}
+                    error={servers[editingServerIndex].status === "failed"}
                     onSave={handleSave} 
                     onClose={() => setEditingServerIndex(null)} 
                   />
