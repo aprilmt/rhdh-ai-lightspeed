@@ -28,6 +28,12 @@ export default function Home() {
   const [showMcpPromo, setShowMcpPromo] = useState(true);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [notebookMenuOpen, setNotebookMenuOpen] = useState<number | null>(null);
+  const [openSessions, setOpenSessions] = useState<Array<{ id: number; title: string; input: string; messages: Array<{ role: string; content: string }>; width?: number; height?: number }>>([]);
+  const [draggedChatTitle, setDraggedChatTitle] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [draggingSessionId, setDraggingSessionId] = useState<number | null>(null);
+  const [dragOverSessionId, setDragOverSessionId] = useState<number | null>(null);
+  const [resizingSession, setResizingSession] = useState<{ id: number; startX: number; startY: number; startW: number; startH: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -56,6 +62,31 @@ export default function Home() {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing]);
+
+  // Resize individual session panes
+  useEffect(() => {
+    if (!resizingSession) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dw = e.clientX - resizingSession.startX;
+      const dh = e.clientY - resizingSession.startY;
+      const newWidth = Math.min(Math.max(resizingSession.startW + dw, 320), 960);
+      const newHeight = Math.min(Math.max(resizingSession.startH + dh, 300), 800);
+      setOpenSessions((prev) =>
+        prev.map((s) => (s.id === resizingSession.id ? { ...s, width: newWidth, height: newHeight } : s))
+      );
+    };
+
+    const handleMouseUp = () => setResizingSession(null);
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizingSession]);
 
   const models = ["llama 3.1.8b", "llama 3.2.1b", "gpt-4", "claude-3"];
 
@@ -111,6 +142,7 @@ export default function Home() {
   const handleNewChat = () => {
     setChatHistory([]);
     setPrompt("");
+    setOpenSessions([]);
   };
 
   const toggleChatPanel = () => {
@@ -129,6 +161,135 @@ export default function Home() {
 
   const handleUsePrompt = (promptText: string) => {
     setPrompt(promptText);
+  };
+
+  // --- Parallel chat sessions (drag & drop) ---
+  const seedSessionMessages = (title: string) => [
+    { role: "user", content: title },
+    { role: "assistant", content: `Sure — let's continue on "${title}". What would you like to explore or change?` },
+  ];
+
+  const openChatSession = (title: string) => {
+    setOpenSessions((prev) => {
+      if (prev.some((s) => s.title === title)) return prev;
+      return [...prev, { id: Date.now() + Math.random(), title, input: "", messages: seedSessionMessages(title), width: 460, height: 440 }];
+    });
+  };
+
+  const handleResizeStart = (e: React.MouseEvent, session: { id: number; width?: number; height?: number }) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingSession({
+      id: session.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: session.width ?? 460,
+      startH: session.height ?? 440,
+    });
+  };
+
+  const closeSession = (id: number) => {
+    setOpenSessions((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const handleSessionInputChange = (id: number, value: string) => {
+    setOpenSessions((prev) => prev.map((s) => (s.id === id ? { ...s, input: value } : s)));
+  };
+
+  const handleSessionSend = (id: number) => {
+    const target = openSessions.find((s) => s.id === id);
+    if (!target || !target.input.trim()) return;
+    const text = target.input;
+    setOpenSessions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, input: "", messages: [...s.messages, { role: "user", content: text }] } : s))
+    );
+    setTimeout(() => {
+      setOpenSessions((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? { ...s, messages: [...s.messages, { role: "assistant", content: `Here's an update on "${text.substring(0, 40)}${text.length > 40 ? "…" : ""}"` }] }
+            : s
+        )
+      );
+    }, 800);
+  };
+
+  const handleChatDragStart = (e: React.DragEvent, title: string) => {
+    e.dataTransfer.setData("text/plain", title);
+    e.dataTransfer.effectAllowed = "copy";
+    setDraggedChatTitle(title);
+  };
+
+  const handleDropAreaDragOver = (e: React.DragEvent) => {
+    if (activeTab !== "chat") return;
+    e.preventDefault();
+    // Reordering an existing pane is handled by the panes themselves.
+    if (draggingSessionId !== null) {
+      e.dataTransfer.dropEffect = "move";
+      return;
+    }
+    e.dataTransfer.dropEffect = "copy";
+    if (!isDragOver) setIsDragOver(true);
+  };
+
+  const handleDropAreaDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false);
+  };
+
+  const handleDropAreaDrop = (e: React.DragEvent) => {
+    if (activeTab !== "chat") return;
+    e.preventDefault();
+    // Ignore drops that are pane reorders (those are handled per-pane).
+    if (draggingSessionId !== null) {
+      setIsDragOver(false);
+      return;
+    }
+    const title = e.dataTransfer.getData("text/plain") || draggedChatTitle;
+    if (title) openChatSession(title);
+    setIsDragOver(false);
+    setDraggedChatTitle(null);
+  };
+
+  // --- Reorder open session panes ---
+  const reorderSessions = (draggedId: number, targetId: number) => {
+    setOpenSessions((prev) => {
+      if (draggedId === targetId) return prev;
+      const arr = [...prev];
+      const from = arr.findIndex((s) => s.id === draggedId);
+      const to = arr.findIndex((s) => s.id === targetId);
+      if (from < 0 || to < 0) return prev;
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      return arr;
+    });
+  };
+
+  const handleSessionDragStart = (e: React.DragEvent, id: number) => {
+    e.dataTransfer.setData("application/x-session", String(id));
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingSessionId(id);
+  };
+
+  const handleSessionDragEnd = () => {
+    setDraggingSessionId(null);
+    setDragOverSessionId(null);
+  };
+
+  const handleSessionDragOver = (e: React.DragEvent, id: number) => {
+    if (draggingSessionId === null) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverSessionId !== id) setDragOverSessionId(id);
+  };
+
+  const handleSessionDrop = (e: React.DragEvent, id: number) => {
+    if (draggingSessionId === null) return;
+    e.preventDefault();
+    e.stopPropagation();
+    reorderSessions(draggingSessionId, id);
+    setDraggingSessionId(null);
+    setDragOverSessionId(null);
   };
 
   // Auto-resize textarea based on content
@@ -256,7 +417,20 @@ export default function Home() {
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
           {/* Chat Messages & Content Area */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden relative bg-background">
+          <div
+            className="flex-1 overflow-y-auto overflow-x-hidden relative bg-background"
+            onDragOver={handleDropAreaDragOver}
+            onDragLeave={handleDropAreaDragLeave}
+            onDrop={handleDropAreaDrop}
+          >
+            {isDragOver && activeTab === "chat" && (
+              <div className="absolute inset-2 z-30 border-2 border-dashed border-primary rounded-xl bg-primary/5 flex items-center justify-center pointer-events-none">
+                <div className="bg-white/95 px-6 py-4 rounded-xl shadow-sm text-center">
+                  <p className="text-sm font-medium text-primary">Drop to open chat session</p>
+                  <p className="text-xs text-muted-foreground mt-1">View and edit multiple chats in parallel</p>
+                </div>
+              </div>
+            )}
             {activeTab === "notebooks" ? (
               /* Notebooks Page - My Notebooks */
               <div className="p-6">
@@ -410,7 +584,7 @@ export default function Home() {
             <>
             {/* Toggle buttons and divider */}
             <div className="absolute top-4 left-4 z-10 flex items-start gap-4">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-row gap-2">
                 <div className="relative group/chat-tooltip">
                   <button
                     onClick={toggleChatPanel}
@@ -432,12 +606,12 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className={`relative group/new-chat-tooltip ${showChatPanel ? 'hidden' : ''}`}>
+                <div className={`relative group/new-chat-tooltip ${showChatPanel || (chatHistory.length === 0 && openSessions.length === 0) ? 'hidden' : ''}`}>
                   <button
                     className="p-2 rounded bg-card text-muted-foreground shadow-sm hover:bg-accent/10 transition-colors"
                     aria-label="New chat"
                   >
-                    <div className="size-[20px]">
+                    <div className="size-[24px]">
                       <EditSquare />
                     </div>
                   </button>
@@ -454,6 +628,147 @@ export default function Home() {
               <div className={`w-px bg-[#c7c7c7] h-full ${showChatPanel ? 'hidden' : ''}`} />
             </div>
 
+            {openSessions.length > 0 ? (
+              /* Parallel chat sessions workspace */
+              <div className="p-4 pt-16 h-full overflow-y-auto">
+                {/* Model selector for sessions workspace */}
+                <div className="absolute top-4 right-4 z-20 flex items-center h-10">
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowModelDropdown(!showModelDropdown)}
+                      className="text-[14px] font-medium text-muted-foreground hover:text-foreground hover:bg-[rgba(199,199,199,0.25)] transition-colors flex items-center gap-1 rounded-full border border-border px-3 py-1"
+                    >
+                      <span>{selectedModel}</span>
+                      <div className="size-[14px]">
+                        <svg className="block size-full" fill="none" viewBox="0 0 9.33333 6.02771">
+                          <path clipRule="evenodd" d="M0.390524 0.390524C0.585786 0.195262 0.902369 0.195262 1.09763 0.390524L4.66667 3.95956L8.2357 0.390524C8.43096 0.195262 8.74754 0.195262 8.94281 0.390524C9.13807 0.585786 9.13807 0.902369 8.94281 1.09763L5.02022 5.02022C4.82496 5.21548 4.50837 5.21548 4.31311 5.02022L0.390524 1.09763C0.195262 0.902369 0.195262 0.585786 0.390524 0.390524Z" fill="currentColor" fillRule="evenodd" />
+                        </svg>
+                      </div>
+                    </button>
+
+                    {showModelDropdown && (
+                      <div className="absolute top-full right-0 mt-2 bg-popover rounded-lg shadow-lg border border-border min-w-[160px] z-50">
+                        {models.map((model) => (
+                          <button
+                            key={model}
+                            onClick={() => {
+                              setSelectedModel(model);
+                              setShowModelDropdown(false);
+                            }}
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-secondary first:rounded-t-lg last:rounded-b-lg ${
+                              model === selectedModel ? "bg-secondary text-primary" : "text-foreground"
+                            }`}
+                          >
+                            {model}
+                            {model === selectedModel && " ✓"}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-4 items-start">
+                  {openSessions.map((session) => (
+                    <div
+                      key={session.id}
+                      onDragOver={(e) => handleSessionDragOver(e, session.id)}
+                      onDrop={(e) => handleSessionDrop(e, session.id)}
+                      style={{ width: `${session.width ?? 460}px`, height: `${session.height ?? 440}px` }}
+                      className={`relative bg-white border rounded-lg shadow-sm flex flex-col overflow-hidden transition-colors ${
+                        dragOverSessionId === session.id && draggingSessionId !== session.id
+                          ? "border-primary ring-2 ring-primary/40"
+                          : "border-border"
+                      } ${draggingSessionId === session.id ? "opacity-50" : ""}`}
+                    >
+                      {/* Session header (drag handle for reordering) */}
+                      <div
+                        draggable
+                        onDragStart={(e) => handleSessionDragStart(e, session.id)}
+                        onDragEnd={handleSessionDragEnd}
+                        className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0 cursor-grab active:cursor-grabbing select-none"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="size-[16px] shrink-0 text-muted-foreground" aria-hidden="true">
+                            <svg className="block size-full" fill="currentColor" viewBox="0 0 16 16">
+                              <circle cx="5" cy="4" r="1.2" />
+                              <circle cx="5" cy="8" r="1.2" />
+                              <circle cx="5" cy="12" r="1.2" />
+                              <circle cx="11" cy="4" r="1.2" />
+                              <circle cx="11" cy="8" r="1.2" />
+                              <circle cx="11" cy="12" r="1.2" />
+                            </svg>
+                          </div>
+                          <span className="text-sm font-medium text-foreground truncate">{session.title}</span>
+                        </div>
+                        <button
+                          onClick={() => closeSession(session.id)}
+                          className="p-1 hover:bg-secondary rounded shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label="Close session"
+                        >
+                          <svg className="size-[16px]" fill="none" viewBox="0 0 24 24">
+                            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Session messages */}
+                      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        {session.messages.map((message, i) => (
+                          <div key={i} className={message.role === "user" ? "text-right" : "text-left"}>
+                            <div className={`inline-block px-3 py-2 rounded-lg text-sm leading-relaxed max-w-[85%] ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                              {message.content}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Session input */}
+                      <div className="border-t border-border p-3 shrink-0">
+                        <div className="bg-input-background rounded-[16px] border border-border flex items-end gap-2 px-3 py-2">
+                          <textarea
+                            value={session.input}
+                            onChange={(e) => handleSessionInputChange(session.id, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSessionSend(session.id);
+                              }
+                            }}
+                            placeholder="Message this chat…"
+                            rows={1}
+                            className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground resize-none max-h-[80px] min-h-[24px]"
+                          />
+                          <button
+                            onClick={() => handleSessionSend(session.id)}
+                            className="size-[32px] rounded-full hover:bg-muted/50 flex items-center justify-center transition-colors shrink-0"
+                            aria-label="Send"
+                          >
+                            <div className="size-[18px]">
+                              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 17.0832 14.5831">
+                                <path d={svgPaths.p3eea9c00} fill="var(--muted-foreground)" />
+                              </svg>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Resize handle (bottom-right corner) */}
+                      <div
+                        onMouseDown={(e) => handleResizeStart(e, session)}
+                        className="absolute bottom-0 right-0 size-[18px] cursor-se-resize flex items-end justify-end p-[3px] text-muted-foreground/60 hover:text-primary z-10"
+                        aria-label="Resize session"
+                      >
+                        <svg className="block size-full" viewBox="0 0 12 12" fill="none">
+                          <path d="M11 5L5 11M11 9L9 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+            <>
             {/* Chat Messages */}
             {chatHistory.length > 0 && (
               <div className="p-6 max-w-[900px] mx-auto pb-48">
@@ -515,13 +830,13 @@ export default function Home() {
                 <div style={{ height: `${containerHeight}px`, visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true" />
                 
                 {/* Plus Icon - Far Left */}
-                <div className="absolute left-[6px] bottom-[12px] z-10">
+                <div className="absolute left-[12px] bottom-[8px] z-10">
                   <div className="relative">
                     <button 
                       onClick={() => setShowAttachMenu(!showAttachMenu)}
-                      className="size-[20px] hover:opacity-70 transition-opacity"
+                      className="size-[28px] rounded-full flex items-center justify-center hover:bg-[rgba(199,199,199,0.25)] transition-colors"
                     >
-                      <svg className="block size-full mx-[16px] my-[0px]" fill="none" preserveAspectRatio="none" viewBox="0 0 11.5 11.5">
+                      <svg className="block size-[14px]" fill="none" preserveAspectRatio="none" viewBox="0 0 11.5 11.5">
                         <path d={svgPaths.pe763897} stroke="var(--muted-foreground)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
                       </svg>
                     </button>
@@ -552,11 +867,11 @@ export default function Home() {
                 </div>
 
                 {/* Model Selector - Separate */}
-                <div className="absolute left-[54px] bottom-[12px] z-10">
+                <div className="absolute left-[50px] bottom-[8px] z-10">
                   <div className="relative">
                     <button
                       onClick={() => setShowModelDropdown(!showModelDropdown)}
-                      className="text-[14px] font-medium text-muted-foreground hover:text-foreground hover:bg-[rgba(199,199,199,0.25)] transition-colors flex items-center gap-1 rounded px-1"
+                      className="text-[14px] font-medium text-muted-foreground hover:text-foreground hover:bg-[rgba(199,199,199,0.25)] transition-colors flex items-center gap-1 rounded-full px-2 py-1"
                     >
                       <span>{selectedModel}</span>
                       <div className="size-[14px]">
@@ -648,6 +963,8 @@ export default function Home() {
             </div>
             </>
             )}
+            </>
+            )}
           </div>
         </div>
 
@@ -665,7 +982,18 @@ export default function Home() {
         >
           <div className="flex-1 h-full flex flex-col overflow-hidden">
             {/* Close button */}
-            <div className="flex items-center justify-end p-2 border-b border-border">
+            <div className="flex items-center justify-between p-2 border-b border-border">
+              <button
+                onClick={handleNewChat}
+                className="bg-primary text-primary-foreground content-stretch flex gap-[4px] items-center justify-center px-4 py-1.5 rounded-full hover:opacity-90 transition-opacity"
+              >
+                <div className="size-[18px] relative">
+                  <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18 18">
+                    <path d={svgPaths.p16411400} fill="currentColor" />
+                  </svg>
+                </div>
+                <span className="font-medium text-sm">New chat</span>
+              </button>
               <button
                 onClick={toggleChatPanel}
                 className="p-2 hover:bg-secondary rounded transition-colors"
@@ -677,18 +1005,6 @@ export default function Home() {
               </button>
             </div>
             <div className="p-4 border-b border-border flex flex-col gap-4">
-              <button
-                onClick={handleNewChat}
-                className="bg-primary text-primary-foreground content-stretch flex gap-[4px] items-center justify-center px-6 py-2 rounded-full w-full hover:opacity-90 transition-opacity"
-              >
-                <div className="size-[18px] relative">
-                  <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18 18">
-                    <path d={svgPaths.p16411400} fill="currentColor" />
-                  </svg>
-                </div>
-                <span className="font-medium">New chat</span>
-              </button>
-
               <div className="relative">
                 <input
                   type="text"
@@ -704,20 +1020,33 @@ export default function Home() {
             </div>
 
             <div className="p-4 overflow-y-auto flex-1">
+              <p className="text-xs text-muted-foreground mb-3">Drag a chat to the right to open it, or drop several to work in parallel.</p>
               <p className="text-xs font-medium text-muted-foreground mb-2">Pinned</p>
-              <button className="w-full text-left p-2 hover:bg-secondary rounded flex items-center gap-2 mb-1">
+              <button
+                draggable
+                onDragStart={(e) => handleChatDragStart(e, "Troubleshoot system crash")}
+                onClick={() => openChatSession("Troubleshoot system crash")}
+                className="w-full text-left p-2 hover:bg-secondary rounded flex items-center gap-2 mb-1 cursor-grab active:cursor-grabbing"
+              >
                 <span className="text-sm text-foreground">⭐ Troubleshoot system crash</span>
               </button>
-              <button className="w-full text-left p-2 hover:bg-secondary rounded flex items-center gap-2 mb-4">
+              <button
+                draggable
+                onDragStart={(e) => handleChatDragStart(e, "Help me document my code")}
+                onClick={() => openChatSession("Help me document my code")}
+                className="w-full text-left p-2 hover:bg-secondary rounded flex items-center gap-2 mb-4 cursor-grab active:cursor-grabbing"
+              >
                 <span className="text-sm text-foreground"> Help me document my code</span>
               </button>
 
               <p className="text-xs font-medium text-muted-foreground mb-2">Recent</p>
-              {["Red Hat products and ser...", "Enterprise Linux installatio...", "Troubleshoot system crash", "Crashing pod assistance", "OpenShift AI pipelines", "Updating subscription plan", "Red Hat licensing options"].map((item, index) => (
+              {["Red Hat products and services", "Enterprise Linux installation", "Troubleshoot system crash", "Crashing pod assistance", "OpenShift AI pipelines", "Updating subscription plan", "Red Hat licensing options"].map((item, index) => (
                 <button
                   key={index}
-                  className="w-full text-left p-2 hover:bg-secondary rounded flex items-center gap-2 mb-1"
-                  onClick={() => alert(`Clicked: ${item}`)}
+                  draggable
+                  onDragStart={(e) => handleChatDragStart(e, item)}
+                  className="w-full text-left p-2 hover:bg-secondary rounded flex items-center gap-2 mb-1 cursor-grab active:cursor-grabbing"
+                  onClick={() => openChatSession(item)}
                 >
                   <div className="size-[16px] shrink-0">
                     <svg className="block size-full" fill="none" viewBox="0 0 16 16">
