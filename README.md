@@ -1,7 +1,7 @@
 
   # Lightspeed prototype
 
-  This is a code bundle for Lightspeed prototype. The live page is available at https://aprilmt.github.io/rhdh-ai-lightspeed/.
+  This is a code bundle for Developer Lightspeed prototype(Chat and Notebook features). The live page is available at https://aprilmt.github.io/rhdh-ai-lightspeed/.
 
   ## Running the code
 
