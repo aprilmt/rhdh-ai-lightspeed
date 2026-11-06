@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router";
+import { Outlet, useNavigate } from "react-router";
 import svgPaths from "../../imports/svg-4cexv9f4rn";
 
 interface NavItemProps {
@@ -14,14 +14,19 @@ function NavItem({ icon, label, isActive, onClick }: NavItemProps) {
   return (
     <button
       onClick={onClick}
-      className={`absolute h-[48px] left-0 overflow-clip w-[224px] transition-colors hover:bg-[#e8e8e8] cursor-pointer ${
-        isActive ? "bg-[#f2f2f2]" : "bg-[#f2f2f2]"
+      className={`group absolute left-0 right-0 h-[48px] cursor-pointer bg-[#f2f2f2] ${
+        isActive ? "" : "hover:bg-[#e8e8e8]"
       }`}
     >
-      <p className="absolute font-['Red_Hat_Text:Regular',sans-serif] font-normal leading-[20px] left-[54px] text-[#151515] text-[14px] top-[calc(50%-10px)] whitespace-nowrap pointer-events-none">
+      <span
+        className={`pointer-events-none absolute top-1 right-3 bottom-1 left-3 rounded-lg bg-white shadow-sm ${
+          isActive ? "opacity-100" : "opacity-0 group-focus-visible:opacity-100"
+        }`}
+      />
+      <p className="absolute z-10 font-['Red_Hat_Text:Regular',sans-serif] font-normal leading-[20px] left-[54px] text-[#151515] text-[14px] top-[calc(50%-10px)] whitespace-nowrap pointer-events-none">
         {label}
       </p>
-      <div className="-translate-y-1/2 absolute left-[24px] size-[24px] top-1/2 pointer-events-none">
+      <div className="-translate-y-1/2 absolute left-[24px] z-10 size-[24px] top-1/2 pointer-events-none">
         {icon}
       </div>
     </button>
@@ -30,10 +35,10 @@ function NavItem({ icon, label, isActive, onClick }: NavItemProps) {
 
 export default function Root() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [leftPanelOpen, setLeftPanelOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [focusedNav, setFocusedNav] = useState("lightspeed");
 
   const navigationItems = [
     {
@@ -155,17 +160,10 @@ export default function Root() {
     },
   ];
 
-  const isActivePath = (path: string) => {
-    if (path === "/") {
-      return location.pathname === "/";
-    }
-    return location.pathname.startsWith(path);
-  };
-
   return (
     <div className="relative w-full h-screen bg-[#f2f2f2] overflow-hidden">
       {/* Logo */}
-      <div className="absolute h-[64px] left-0 top-0 w-[194px] z-20 bg-[#f2f2f2]">
+      <div className="absolute h-[64px] left-0 top-0 w-[194px] z-20 bg-[#f2f2f2] border-b border-[#c7c7c7]">
         <div className="absolute h-[40px] left-[24px] top-[12px] w-[150px]">
           <img
             alt="Red Hat Developer Hub"
@@ -253,26 +251,59 @@ export default function Root() {
                   icon={item.icon}
                   label={item.label}
                   path={item.path}
-                  isActive={isActivePath(item.path)}
-                  onClick={() => navigate(item.path)}
+                  isActive={focusedNav === item.path}
+                  onClick={() => {
+                    setFocusedNav(item.path);
+                    navigate(item.path);
+                  }}
                 />
               </div>
             ))}
           </div>
 
+          <div className="relative h-[48px]">
+            <NavItem
+              icon={
+                <svg className="absolute block size-full" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M6 6.5A2.5 2.5 0 0 1 8.5 4h8A2.5 2.5 0 0 1 19 6.5v6A2.5 2.5 0 0 1 16.5 15H10l-3.2 2.6V15H8.5A2.5 2.5 0 0 1 6 12.5v-6Z" stroke="#151515" strokeWidth="1.6" strokeLinejoin="round" />
+                  <circle cx="9.2" cy="10" r="0.9" fill="#151515" />
+                  <circle cx="12" cy="10" r="0.9" fill="#151515" />
+                  <circle cx="14.8" cy="10" r="0.9" fill="#151515" />
+                </svg>
+              }
+              label="Lightspeed"
+              path="/lightspeed"
+              isActive={focusedNav === "lightspeed"}
+              onClick={() => {
+                setFocusedNav("lightspeed");
+                navigate("/");
+              }}
+            />
+          </div>
+
           {/* Bottom Administration */}
           <div className="absolute bottom-0 left-0 right-0 h-[65px]">
             <div className="absolute bg-[#c7c7c7] h-px left-0 right-0 top-0" />
-            <button className="absolute bg-[#f2f2f2] h-[48px] left-0 top-[17px] w-[224px] hover:bg-[#e8e8e8] transition-colors">
-              <p className="absolute font-['Red_Hat_Text:SemiBold',sans-serif] font-semibold leading-[20px] left-[54px] text-[#151515] text-[14px] top-[calc(50%-10px)] whitespace-nowrap pointer-events-none">
+            <button
+              onClick={() => setFocusedNav("administration")}
+              className={`group absolute h-[48px] left-0 top-[17px] w-[224px] border-r border-[#c7c7c7] box-border bg-[#f2f2f2] ${
+                focusedNav === "administration" ? "" : "hover:bg-[#e8e8e8]"
+              }`}
+            >
+              <span
+                className={`pointer-events-none absolute top-1 right-3 bottom-1 left-3 rounded-lg bg-white shadow-sm ${
+                  focusedNav === "administration" ? "opacity-100" : "opacity-0 group-focus-visible:opacity-100"
+                }`}
+              />
+              <p className="absolute z-10 font-['Red_Hat_Text:SemiBold',sans-serif] font-semibold leading-[20px] left-[54px] text-[#151515] text-[14px] top-[calc(50%-10px)] whitespace-nowrap pointer-events-none">
                 Administration
               </p>
-              <div className="absolute left-[24px] size-[24px] top-[12px] pointer-events-none">
+              <div className="absolute left-[24px] z-10 size-[24px] top-[12px] pointer-events-none">
                 <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                   <path d={svgPaths.p381cb480} fill="var(--fill-0, #707070)" />
                 </svg>
               </div>
-              <div className="absolute left-[176px] size-[24px] top-[12px] pointer-events-none">
+              <div className="absolute left-[176px] z-10 size-[24px] top-[12px] pointer-events-none">
                 <div className="-rotate-90">
                   <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                     <path d={svgPaths.p2b1b0180} fill="var(--fill-0, #1F1F1F)" />

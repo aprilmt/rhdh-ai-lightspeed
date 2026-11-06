@@ -22,9 +22,10 @@ interface McpServersDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onUsePrompt?: (prompt: string) => void;
+  onEnabledChange?: (enabled: boolean) => void;
 }
 
-export default function McpServersDrawer({ isOpen, onClose, onUsePrompt }: McpServersDrawerProps) {
+export default function McpServersDrawer({ isOpen, onClose, onUsePrompt, onEnabledChange }: McpServersDrawerProps) {
   const [activeTab, setActiveTab] = useState<"servers" | "prompts">("servers");
   const [servers, setServers] = useState<McpServer[]>([
     { name: "Github", enabled: false, status: "token-required", tools: 0, requiresToken: true },
@@ -40,6 +41,10 @@ export default function McpServersDrawer({ isOpen, onClose, onUsePrompt }: McpSe
   const [editingServerIndex, setEditingServerIndex] = useState<number | null>(null);
   const [failedTooltipIndex, setFailedTooltipIndex] = useState<number | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    onEnabledChange?.(servers.some((server) => server.enabled));
+  }, [servers, onEnabledChange]);
 
   // Close tooltip when clicking outside
   useEffect(() => {

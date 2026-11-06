@@ -13,21 +13,426 @@ interface ActionCard {
   icon: React.ReactNode;
 }
 
+const TOOL_JSON = `{
+  "server_label": "mcp-integration-tools",
+  "tools": [
+    {
+      "name": "software-catalog-mcp-extras.query-catalog-entities",
+      "description": "Search and retrieve catalog entities from the Backstage software catalog"
+    }
+  ]
+}`;
+
+function formatStamp(date: Date) {
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function GuestIcon() {
+  return (
+    <div className="size-[36px] relative shrink-0 rounded-full overflow-hidden" aria-hidden="true">
+      <img
+        alt=""
+        className="absolute inset-0 size-full object-cover"
+        src={`${import.meta.env.BASE_URL}user-avatar.png`}
+      />
+    </div>
+  );
+}
+
+function LightspeedMark() {
+  return (
+    <img
+      alt=""
+      className="size-[36px] shrink-0 rounded-full object-contain"
+      src={`${import.meta.env.BASE_URL}lightspeed-icon.png`}
+    />
+  );
+}
+
+type NotebookDocument = { id: string; name: string };
+
+const ONBOARDING_DOCUMENTS: NotebookDocument[] = [
+  { id: "readme", name: "README.md" },
+  { id: "tsconfig", name: "tsconfig.json" },
+  { id: "present", name: "RHDH present.pdf" },
+];
+
+function documentBadge(name: string) {
+  const extension = name.split(".").pop()?.toLowerCase();
+  if (extension === "md") return { label: "MD", className: "bg-[#e7f1fa] text-[#0066cc]" };
+  if (extension === "json") return { label: "JSON", className: "bg-[#fff1e0] text-[#c46100]" };
+  if (extension === "pdf") return { label: "PDF", className: "bg-[#fde7e9] text-[#c9190b]" };
+  return { label: (extension || "FILE").slice(0, 4).toUpperCase(), className: "bg-secondary text-muted-foreground" };
+}
+
+function NotebookWorkspace({
+  title,
+  initialDocuments,
+  panelOpen,
+  onTogglePanel,
+  onClose,
+}: {
+  title: string;
+  initialDocuments: NotebookDocument[];
+  panelOpen: boolean;
+  onTogglePanel: () => void;
+  onClose: () => void;
+}) {
+  const [showNotice, setShowNotice] = useState(true);
+  const [documents, setDocuments] = useState<NotebookDocument[]>(initialDocuments);
+  const [documentMenu, setDocumentMenu] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addDocuments = (files: FileList | null) => {
+    if (!files?.length) return;
+    setDocuments((current) => [
+      ...current,
+      ...Array.from(files).map((file) => ({ id: `${file.name}-${Date.now()}-${Math.random()}`, name: file.name })),
+    ]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const deleteDocument = (id: string) => {
+    setDocuments((current) => current.filter((document) => document.id !== id));
+    setDocumentMenu(null);
+  };
+
+  return (
+    <div className="absolute inset-0 flex bg-background">
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(event) => addDocuments(event.target.files)}
+      />
+      {panelOpen && (
+        <aside className="w-[280px] shrink-0 border-r border-[#d2d2d2] flex flex-col bg-background">
+          <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-4">
+            <span className="text-[15px] font-medium text-[#151515] truncate">{title}</span>
+            <button
+              onClick={onTogglePanel}
+              className="text-[#6a6e73] hover:text-[#151515] p-1"
+              aria-label="Collapse documents"
+            >
+              <div className="size-[24px]">
+                <CloseIocn />
+              </div>
+            </button>
+          </div>
+          <div className="flex items-center justify-between gap-3 px-5 py-2">
+            <span className="text-[15px] font-medium text-[#151515]">
+              {documents.length} {documents.length === 1 ? "Document" : "Documents"}
+            </span>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-primary text-sm font-medium inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 cursor-pointer hover:bg-[#e8e8e8] transition-colors"
+            >
+              <svg className="size-4 pointer-events-none" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M8 5.1v5.8M5.1 8h5.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+              <span>Add</span>
+            </button>
+          </div>
+          {documents.length > 0 && (
+            <ul className="px-5 pt-2">
+              {documents.map((document) => {
+                const badge = documentBadge(document.name);
+                return (
+                  <li key={document.id} className="flex items-center gap-2 py-2">
+                    <span className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-medium leading-none ${badge.className}`}>
+                      {badge.label}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-[#151515]" title={document.name}>
+                      {document.name}
+                    </span>
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setDocumentMenu((open) => (open === document.id ? null : document.id))}
+                        className="p-1 text-muted-foreground hover:text-foreground"
+                        aria-label={`Actions for ${document.name}`}
+                      >
+                        <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="5" r="1.6" />
+                          <circle cx="12" cy="12" r="1.6" />
+                          <circle cx="12" cy="19" r="1.6" />
+                        </svg>
+                      </button>
+                      {documentMenu === document.id && (
+                        <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-lg bg-white py-1 shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)]">
+                          <button
+                            type="button"
+                            onClick={() => deleteDocument(document.id)}
+                            className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </aside>
+      )}
+
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
+        <div className="flex items-center justify-end px-6 pt-4 pb-2 shrink-0">
+          {!panelOpen && (
+            <div className="mr-auto -ml-2 flex flex-col items-center gap-3">
+              <div className="relative group/expand-tooltip">
+                <button
+                  onClick={onTogglePanel}
+                  className="p-2 rounded bg-card text-muted-foreground shadow-sm hover:bg-accent/10 transition-colors"
+                  aria-label="Expand documents"
+                >
+                  <div className="size-[24px]">
+                    <ArrowMenuOpen />
+                  </div>
+                </button>
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-[#151515] text-white text-xs rounded whitespace-nowrap opacity-0 pointer-events-none group-hover/expand-tooltip:opacity-100 transition-opacity z-20">
+                  Expand documents
+                  <div className="absolute right-full top-1/2 -translate-y-1/2">
+                    <div className="border-4 border-transparent border-r-[#151515]"></div>
+                  </div>
+                </div>
+              </div>
+              <div className="relative group/add-tooltip">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 rounded bg-card text-muted-foreground shadow-sm hover:bg-accent/10 transition-colors"
+                  aria-label="Add documents"
+                >
+                  <svg className="size-[24px]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="7" className="stroke-primary" strokeWidth="1.5" />
+                    <path d="M12 8.75v6.5M8.75 12h6.5" className="stroke-primary" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </button>
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-[#151515] text-white text-xs rounded whitespace-nowrap opacity-0 pointer-events-none group-hover/add-tooltip:opacity-100 transition-opacity z-20">
+                  Add documents
+                  <div className="absolute right-full top-1/2 -translate-y-1/2">
+                    <div className="border-4 border-transparent border-r-[#151515]"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={onClose}
+            className="text-primary text-sm font-medium flex items-center gap-1.5 hover:underline"
+          >
+            Close notebook
+            <svg className="size-3.5" viewBox="0 0 16 16" fill="none">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
+          <img
+            alt=""
+            className="size-10 mb-5 object-contain"
+            src={`${import.meta.env.BASE_URL}notebook-book.png`}
+          />
+          <h2 className="text-[20px] font-medium text-[#151515] mb-5">Upload a resource to get started</h2>
+          <button className="inline-flex items-center gap-2 rounded-full border border-primary text-primary px-4 py-1.5 text-sm font-medium hover:bg-primary/5 transition-colors">
+            Upload a resource
+            <svg className="size-4" viewBox="0 0 16 16" fill="none">
+              <path d="M8 10.2V3.4M8 3.4 5.6 5.8M8 3.4l2.4 2.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M3.2 10.2v1.3A1.5 1.5 0 0 0 4.7 13h6.6a1.5 1.5 0 0 0 1.5-1.5v-1.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="shrink-0 px-8 pb-4 w-full max-w-[980px] mx-auto">
+          {showNotice && (
+            <div className="rounded-lg border border-[#6d5bd0] bg-white px-4 py-3 mb-4 relative">
+              <button
+                onClick={() => setShowNotice(false)}
+                className="absolute top-2.5 right-2.5 text-[#6a6e73] hover:text-[#151515] p-1"
+                aria-label="Dismiss notice"
+              >
+                <svg className="size-3.5" viewBox="0 0 16 16" fill="none">
+                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+              </button>
+              <div className="flex gap-3 pr-6">
+                <svg className="size-5 shrink-0 text-[#6d5bd0] mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.9-11.2a.9.9 0 1 1-1.8 0 .9.9 0 0 1 1.8 0ZM9.2 9.1h1.6v5.2H9.2V9.1Z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-[#151515] mb-0.5">Important</p>
+                  <p className="text-sm leading-relaxed text-[#151515]">
+                    This feature uses AI technology. Do not include any personal information or any other sensitive information in your input. Interactions may be used to improve Red Hat&apos;s products or services.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-full bg-[#f0f0f0] px-6 py-3.5">
+            <input
+              type="text"
+              placeholder="Ask about your documents..."
+              className="w-full bg-transparent outline-none text-[15px] text-foreground placeholder:text-[#8b8d8f]"
+            />
+          </div>
+          <p className="text-center text-xs text-[#8b8d8f] mt-3">Always review AI generated content prior to use.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GeneratingReply() {
+  return (
+    <div className="mb-6" style={{ animation: "lsp-fade-up 0.35s ease-out" }}>
+      <div className="flex items-center gap-3 mb-2">
+        <div className="animate-pulse">
+          <LightspeedMark />
+        </div>
+        <span className="text-sm font-medium text-foreground">rhdh-lightspeed-mock</span>
+        <span className="text-xs text-muted-foreground">Generating</span>
+        <span className="flex items-center gap-1" aria-hidden="true">
+          {[0, 1, 2].map((dot) => (
+            <span
+              key={dot}
+              className="size-1.5 rounded-full bg-primary"
+              style={{ animation: "lsp-dot 1s infinite", animationDelay: `${dot * 0.15}s` }}
+            />
+          ))}
+        </span>
+      </div>
+      <div className="ml-12 space-y-2">
+        <div className="h-3 w-2/3 rounded-full bg-secondary animate-pulse" />
+        <div className="h-3 w-1/2 rounded-full bg-secondary animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+function ToolCallCard({ sentAt }: { sentAt: number }) {
+  const [open, setOpen] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const copyJson = () => {
+    navigator.clipboard?.writeText(TOOL_JSON);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="w-full text-left">
+      <div className="flex items-center gap-3 mb-3">
+        <LightspeedMark />
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+          <span className="text-sm font-medium text-foreground">rhdh-lightspeed-mock</span>
+          <span className="text-[11px] leading-none px-1.5 py-0.5 rounded-full border border-border text-muted-foreground">AI</span>
+          <span className="text-xs text-muted-foreground">{formatStamp(new Date(sentAt))}</span>
+        </div>
+      </div>
+
+      <div className="ml-12 mb-4 space-y-2 text-sm leading-relaxed text-foreground">
+        <p>I checked the connected MCP servers for tools that can answer this.</p>
+        <p>
+          The software catalog integration is available. It can search Backstage entities and return their names, owners, and links. The tool response is below.
+        </p>
+      </div>
+
+      <div className="border border-border rounded-lg bg-white overflow-hidden ml-12">
+        <button
+          onClick={() => setOpen((value) => !value)}
+          className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-secondary/40 transition-colors"
+        >
+          <svg className={`size-4 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`} viewBox="0 0 16 16" fill="none">
+            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="text-sm font-medium text-primary">Tool response: mcp_list_tools</span>
+        </button>
+
+        {open && (
+          <div className="px-4 pb-4">
+            <p className="text-sm text-foreground mb-3">Here's a summary of your response</p>
+            <div className="border border-border rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <svg className="size-4 text-primary" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M10.2 1.4a1.2 1.2 0 0 1 1.7 0l2.7 2.7a1.2 1.2 0 0 1 0 1.7l-1.1 1.1-4.4-4.4 1.1-1.1zM8.4 3.2 2.2 9.4c-.2.2-.3.4-.4.7l-.7 2.8a.6.6 0 0 0 .7.7l2.8-.7c.3-.1.5-.2.7-.4l6.2-6.2-4.4-4.4z" />
+                </svg>
+                <span className="text-sm font-medium text-foreground">mcp-integration-tools</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Execution time: 10ms</p>
+              <div className="h-px bg-border my-4" />
+              <p className="text-sm font-medium text-foreground mb-2">Response</p>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-[11px] leading-none px-1.5 py-0.5 rounded-full border border-border text-muted-foreground">AI</span>
+                <span className="text-xs text-muted-foreground">{formatStamp(new Date(sentAt))}</span>
+              </div>
+              <div className="rounded-md bg-[#1e1e1e] text-[#d4d4d4] overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-xs font-medium">JSON</span>
+                  <button onClick={copyJson} className="text-white/80 hover:text-white" aria-label="Copy JSON">
+                    {copied ? (
+                      <span className="text-[11px]">Copied</span>
+                    ) : (
+                      <svg className="size-4" viewBox="0 0 16 16" fill="none">
+                        <rect x="5.5" y="5.5" width="8" height="8" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+                        <path d="M10.5 5.5V3.2A1.2 1.2 0 0 0 9.3 2H3.2A1.2 1.2 0 0 0 2 3.2v6.1a1.2 1.2 0 0 0 1.2 1.2H5.5" stroke="currentColor" strokeWidth="1.2" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                <pre className="px-3 pb-3 text-[12px] leading-5 font-mono overflow-x-auto whitespace-pre text-[#9cdcfe]">
+{`{
+  `}<span className="text-[#9cdcfe]">"server_label"</span>{`: `}<span className="text-[#ce9178]">"mcp-integration-tools"</span>{`,
+  `}<span className="text-[#9cdcfe]">"tools"</span>{`: [
+    {
+      `}<span className="text-[#9cdcfe]">"name"</span>{`: `}<span className="text-[#ce9178]">"software-catalog-mcp-extras.query-catalog-entities"</span>{`,
+      `}<span className="text-[#9cdcfe]">"description"</span>{`: `}<span className="text-[#ce9178]">"Search and retrieve catalog entities from the Backstage software catalog"</span>{`
+    }
+  ]
+}`}
+                </pre>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [prompt, setPrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState("llama 3.1.8b");
   const [showModelDropdown, setShowModelDropdown] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{ role: string; content: string }>>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{ role: string; content: string; sentAt: number }>>([]);
   const [showChatPanel, setShowChatPanel] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "notebooks">("chat");
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [showMcpDrawer, setShowMcpDrawer] = useState(false);
+  const [mcpToolsEnabled, setMcpToolsEnabled] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [containerHeight, setContainerHeight] = useState(109);
   const [leftPanelWidth, setLeftPanelWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
   const [showMcpPromo, setShowMcpPromo] = useState(true);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [notebookMenuOpen, setNotebookMenuOpen] = useState<number | null>(null);
+  const [notebookOpen, setNotebookOpen] = useState<"new" | "onboarding" | null>(null);
+  const [notebookPanelOpen, setNotebookPanelOpen] = useState(true);
   const [openSessions, setOpenSessions] = useState<Array<{ id: number; title: string; input: string; messages: Array<{ role: string; content: string }>; width?: number; height?: number }>>([]);
   const [draggedChatTitle, setDraggedChatTitle] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -35,6 +440,8 @@ export default function Home() {
   const [dragOverSessionId, setDragOverSessionId] = useState<number | null>(null);
   const [resizingSession, setResizingSession] = useState<{ id: number; startX: number; startY: number; startW: number; startH: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const generationRef = useRef(0);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -121,16 +528,20 @@ export default function Home() {
   ];
 
   const handleSendMessage = () => {
-    if (prompt.trim()) {
-      setChatHistory([...chatHistory, { role: "user", content: prompt }]);
+    const text = prompt.trim();
+    if (text && !isGenerating) {
+      const generation = ++generationRef.current;
+      setChatHistory([...chatHistory, { role: "user", content: text, sentAt: Date.now() }]);
       setPrompt("");
-      // Simulate AI response
+      setIsGenerating(true);
       setTimeout(() => {
+        if (generationRef.current !== generation) return;
         setChatHistory((prev) => [
           ...prev,
-          { role: "assistant", content: `I can help you with that. Let me analyze your request about "${prompt.substring(0, 50)}..."` },
+          { role: "assistant", content: `I can help you with that. Let me analyze your request about "${text.substring(0, 50)}..."`, sentAt: Date.now() },
         ]);
-      }, 1000);
+        setIsGenerating(false);
+      }, 1400);
     }
   };
 
@@ -140,9 +551,11 @@ export default function Home() {
   };
 
   const handleNewChat = () => {
+    generationRef.current += 1;
     setChatHistory([]);
     setPrompt("");
     setOpenSessions([]);
+    setIsGenerating(false);
   };
 
   const toggleChatPanel = () => {
@@ -292,6 +705,11 @@ export default function Home() {
     setDragOverSessionId(null);
   };
 
+  useEffect(() => {
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chatHistory.length, isGenerating]);
+
   // Auto-resize textarea based on content
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -432,12 +850,28 @@ export default function Home() {
               </div>
             )}
             {activeTab === "notebooks" ? (
+              notebookOpen ? (
+              <NotebookWorkspace
+                key={notebookOpen}
+                title={notebookOpen === "onboarding" ? "Onboarding RHDH" : "Untitled Notebook"}
+                initialDocuments={notebookOpen === "onboarding" ? ONBOARDING_DOCUMENTS : []}
+                panelOpen={notebookPanelOpen}
+                onTogglePanel={() => setNotebookPanelOpen((open) => !open)}
+                onClose={() => {
+                  setNotebookOpen(null);
+                  setNotebookPanelOpen(true);
+                }}
+              />
+              ) : (
               /* Notebooks Page - My Notebooks */
               <div className="p-6">
                 {/* Header with title and create button */}
                 <div className="flex items-center justify-between mb-6">
                   <h1 className="text-xl font-semibold text-[#151515]">My Notebooks</h1>
-                  <button className="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors">
+                  <button
+                    onClick={() => setNotebookOpen("new")}
+                    className="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors"
+                  >
                     <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
@@ -448,7 +882,10 @@ export default function Home() {
                 {/* Notebook cards grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {/* Onboarding RHDH */}
-                  <div className="bg-white border border-border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group min-h-[120px]">
+                  <div
+                    onClick={() => setNotebookOpen("onboarding")}
+                    className="bg-white border border-border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group min-h-[120px]"
+                  >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <div className="size-5 text-primary">
@@ -580,11 +1017,12 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+              )
             ) : (
             <>
             {/* Toggle buttons and divider */}
             <div className="absolute top-4 left-4 z-10 flex items-start gap-4">
-              <div className="flex flex-row gap-2">
+              <div className="flex flex-col gap-3">
                 <div className="relative group/chat-tooltip">
                   <button
                     onClick={toggleChatPanel}
@@ -605,9 +1043,9 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-
                 <div className={`relative group/new-chat-tooltip ${showChatPanel || (chatHistory.length === 0 && openSessions.length === 0) ? 'hidden' : ''}`}>
                   <button
+                    onClick={handleNewChat}
                     className="p-2 rounded bg-card text-muted-foreground shadow-sm hover:bg-accent/10 transition-colors"
                     aria-label="New chat"
                   >
@@ -615,7 +1053,6 @@ export default function Home() {
                       <EditSquare />
                     </div>
                   </button>
-                  {/* Tooltip */}
                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-[#151515] text-white text-xs rounded whitespace-nowrap opacity-0 pointer-events-none group-hover/new-chat-tooltip:opacity-100 transition-opacity z-20">
                     New chat
                     <div className="absolute right-full top-1/2 -translate-y-1/2">
@@ -768,31 +1205,51 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-            <>
+            <div className="flex flex-col h-full min-h-0">
             {/* Chat Messages */}
             {chatHistory.length > 0 && (
-              <div className="p-6 max-w-[900px] mx-auto pb-48">
+              <div ref={messagesRef} className="flex-1 min-h-0 overflow-y-auto p-6 pt-16">
+                <div className="max-w-[900px] mx-auto pb-6">
                 {chatHistory.map((message, index) => (
-                  <div key={index} className={`mb-4 ${message.role === "user" ? "text-right" : "text-left"}`}>
-                    <div
-                      className={`inline-block p-4 rounded-lg max-w-[80%] ${
-                        message.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-                      }`}
-                    >
-                      <p className="text-sm leading-relaxed">{message.content}</p>
-                    </div>
+                  <div key={index} className="mb-6 text-left" style={message.role === "assistant" ? { animation: "lsp-fade-up 0.45s ease-out" } : undefined}>
+                    {message.role === "user" ? (
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <GuestIcon />
+                          <span className="text-sm font-medium text-foreground">Guest</span>
+                          <span className="text-xs text-muted-foreground">{formatStamp(new Date(message.sentAt))}</span>
+                        </div>
+                        <div className="ml-12 inline-block px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm">
+                          {message.content}
+                        </div>
+                      </div>
+                    ) : mcpToolsEnabled ? (
+                      <ToolCallCard sentAt={message.sentAt} />
+                    ) : (
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <LightspeedMark />
+                          <span className="text-sm font-medium text-foreground">rhdh-lightspeed-mock</span>
+                          <span className="text-[11px] leading-none px-1.5 py-0.5 rounded-full border border-border text-muted-foreground">AI</span>
+                          <span className="text-xs text-muted-foreground">{formatStamp(new Date(message.sentAt))}</span>
+                        </div>
+                        <p className="ml-12 text-sm leading-relaxed text-foreground">{message.content}</p>
+                      </div>
+                    )}
                   </div>
                 ))}
+                {isGenerating && <GeneratingReply />}
+                </div>
               </div>
             )}
 
             {/* Welcome Message */}
             {chatHistory.length === 0 && (
-              <div className={`flex flex-col items-center px-4 pb-[200px] md:pb-32 transition-all duration-300 ${showChatPanel && showMcpDrawer ? 'pt-[72px]' : 'pt-[96px]'}`}>
-                <p className={`font-medium text-primary transition-all duration-300 ${showChatPanel && showMcpDrawer ? 'text-[24px] mb-2' : showMcpDrawer ? 'text-[32px] mb-3' : 'text-[40px] mb-4'}`}>
+              <div className={`flex flex-1 min-h-0 flex-col items-center overflow-y-auto px-4 pb-4 ${showChatPanel && showMcpDrawer ? "pt-4" : "pt-12"}`} style={{ justifyContent: "safe center" }}>
+                <p className={`font-medium text-primary transition-all duration-300 ${showChatPanel && showMcpDrawer ? 'text-[24px] mb-2' : showMcpDrawer ? 'text-[32px] mb-2' : 'text-[40px] mb-2'}`}>
                   Hello, Rachael
                 </p>
-                <p className={`font-normal text-foreground transition-all duration-300 ${showChatPanel && showMcpDrawer ? 'text-[14px] mb-4' : showMcpDrawer ? 'text-[18px] mb-6' : 'text-[24px] mb-8'}`}>
+                <p className={`font-normal text-foreground transition-all duration-300 ${showChatPanel && showMcpDrawer ? 'text-[14px] mb-4' : showMcpDrawer ? 'text-[18px] mb-4' : 'text-[24px] mb-4'}`}>
                   How can I help you today?
                 </p>
 
@@ -824,7 +1281,7 @@ export default function Home() {
             )}
 
             {/* Input Container */}
-            <div className={`sticky bottom-4 left-0 right-0 mx-auto transition-all duration-300 z-20 bg-background pt-4 ${showMcpDrawer ? 'xl:absolute xl:bottom-16 w-[90%] xl:w-[85%] max-w-[680px]' : 'md:absolute md:bottom-16 w-[90%] md:w-[70%] max-w-[680px]'}`}>
+            <div className={`relative shrink-0 mx-auto z-20 bg-background pt-2 pb-4 ${showMcpDrawer ? 'w-[90%] xl:w-[85%] max-w-[680px]' : 'w-[90%] md:w-[70%] max-w-[680px]'}`}>
               <div className="bg-input-background rounded-[20px] border border-border relative transition-all duration-200" style={{ minHeight: `${containerHeight}px` }}>
                 {/* Hidden spacer to ensure container grows with textarea */}
                 <div style={{ height: `${containerHeight}px`, visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true" />
@@ -915,7 +1372,7 @@ export default function Home() {
                     }
                   }}
                   placeholder="Enter a prompt for Lightspeed"
-                  className="absolute top-[4px] left-[4px] w-[calc(100%-8px)] min-h-[32px] max-h-[120px] pl-[16px] pr-[100px] pt-[8px] pb-[24px] bg-transparent outline-none text-[16px] text-foreground placeholder:text-muted-foreground resize-none overflow-y-hidden"
+                  className="absolute top-[4px] left-[4px] w-[calc(100%-8px)] min-h-[32px] max-h-[120px] pl-[16px] pr-[100px] pt-[8px] pb-[24px] bg-transparent outline-none text-[16px] text-foreground placeholder:text-[#c7c7c7] resize-none overflow-y-hidden"
                   rows={1}
                   style={{ paddingBottom: '24px' }}
                 />
@@ -941,7 +1398,7 @@ export default function Home() {
                   >
                     <div className="size-[20px]">
                       <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 17.0832 14.5831">
-                        <path d={svgPaths.p3eea9c00} fill="var(--muted-foreground)" />
+                        <path d={svgPaths.p3eea9c00} fill={prompt.trim() ? "var(--primary)" : "var(--muted-foreground)"} />
                       </svg>
                     </div>
                   </button>
@@ -961,7 +1418,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            </>
+            </div>
             )}
             </>
             )}
@@ -970,7 +1427,7 @@ export default function Home() {
 
         {/* MCP Servers Drawer (Right Side) - Inline */}
         {showMcpDrawer && (
-          <McpServersDrawer isOpen={showMcpDrawer} onClose={closeMcpDrawer} onUsePrompt={handleUsePrompt} />
+          <McpServersDrawer isOpen={showMcpDrawer} onClose={closeMcpDrawer} onUsePrompt={handleUsePrompt} onEnabledChange={setMcpToolsEnabled} />
         )}
       </div>
 
@@ -998,10 +1455,11 @@ export default function Home() {
                 onClick={toggleChatPanel}
                 className="p-2 hover:bg-secondary rounded transition-colors"
                 title="Close panel"
+                aria-label="Close panel"
               >
-                <svg className="size-[20px]" fill="none" viewBox="0 0 24 24">
-                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
+                <div className="size-[24px]">
+                  <CloseIocn />
+                </div>
               </button>
             </div>
             <div className="p-4 border-b border-border flex flex-col gap-4">
