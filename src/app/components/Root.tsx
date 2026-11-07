@@ -265,10 +265,10 @@ export default function Root() {
             <NavItem
               icon={
                 <svg className="absolute block size-full" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M6 6.5A2.5 2.5 0 0 1 8.5 4h8A2.5 2.5 0 0 1 19 6.5v6A2.5 2.5 0 0 1 16.5 15H10l-3.2 2.6V15H8.5A2.5 2.5 0 0 1 6 12.5v-6Z" stroke="#151515" strokeWidth="1.6" strokeLinejoin="round" />
-                  <circle cx="9.2" cy="10" r="0.9" fill="#151515" />
-                  <circle cx="12" cy="10" r="0.9" fill="#151515" />
-                  <circle cx="14.8" cy="10" r="0.9" fill="#151515" />
+                  <path
+                    fill="var(--fill-0, #707070)"
+                    d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"
+                  />
                 </svg>
               }
               label="Lightspeed"

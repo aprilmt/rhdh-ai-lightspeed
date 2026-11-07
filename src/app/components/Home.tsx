@@ -119,7 +119,7 @@ function NotebookWorkspace({
             <span className="text-[15px] font-medium text-[#151515] truncate">{title}</span>
             <button
               onClick={onTogglePanel}
-              className="text-[#6a6e73] hover:text-[#151515] p-1"
+              className="p-2 rounded bg-card text-muted-foreground shadow-sm hover:bg-accent/10 transition-colors"
               aria-label="Collapse documents"
             >
               <div className="size-[24px]">
@@ -159,7 +159,7 @@ function NotebookWorkspace({
                       <button
                         type="button"
                         onClick={() => setDocumentMenu((open) => (open === document.id ? null : document.id))}
-                        className="p-1 text-muted-foreground hover:text-foreground"
+                        className="p-1 rounded-full text-muted-foreground hover:bg-[#e8e8e8] hover:text-foreground transition-colors"
                         aria-label={`Actions for ${document.name}`}
                       >
                         <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
@@ -804,7 +804,7 @@ export default function Home() {
 
           {showHeaderMenu && (
             <div className="absolute right-0 top-[30px] z-50 w-[320px]">
-              <Menu onMcpSettingsClick={handleMcpSettingsClick} />
+              <Menu onMcpSettingsClick={handleMcpSettingsClick} mcpSettingsDisabled={activeTab === "notebooks"} />
             </div>
           )}
         </div>
@@ -899,7 +899,7 @@ export default function Home() {
                       <div className="relative">
                         <button 
                           onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(notebookMenuOpen === 0 ? null : 0); }}
-                          className="text-muted-foreground hover:text-foreground p-1"
+                          className="rounded-full p-1 text-muted-foreground hover:bg-[#e8e8e8] hover:text-foreground transition-colors"
                         >
                           <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
                             <circle cx="12" cy="5" r="2"/>
@@ -943,7 +943,7 @@ export default function Home() {
                       <div className="relative">
                         <button 
                           onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(notebookMenuOpen === 1 ? null : 1); }}
-                          className="text-muted-foreground hover:text-foreground p-1"
+                          className="rounded-full p-1 text-muted-foreground hover:bg-[#e8e8e8] hover:text-foreground transition-colors"
                         >
                           <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
                             <circle cx="12" cy="5" r="2"/>
@@ -987,7 +987,7 @@ export default function Home() {
                       <div className="relative">
                         <button 
                           onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(notebookMenuOpen === 2 ? null : 2); }}
-                          className="text-muted-foreground hover:text-foreground p-1"
+                          className="rounded-full p-1 text-muted-foreground hover:bg-[#e8e8e8] hover:text-foreground transition-colors"
                         >
                           <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
                             <circle cx="12" cy="5" r="2"/>

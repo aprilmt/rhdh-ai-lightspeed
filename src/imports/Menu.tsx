@@ -2,6 +2,7 @@ import svgPaths from "./svg-40f6ewtnue";
 
 interface MenuProps {
   onMcpSettingsClick?: () => void;
+  mcpSettingsDisabled?: boolean;
 }
 
 function Frame1() {
@@ -92,22 +93,23 @@ function Frame2() {
   return <div className="bg-[#c7c7c7] h-px shrink-0 w-full" />;
 }
 
-function Frame6() {
+function Frame6({ disabled }: { disabled?: boolean }) {
+  const iconFill = disabled ? "#A8A8A8" : "black";
   return (
     <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
       <div className="overflow-clip relative shrink-0 size-[18px]" data-name="mcp 1">
         <div className="absolute inset-[-0.25%_4.17%_0.25%_4.17%]" data-name="Vector">
           <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16.5002 18.0002">
-            <path clipRule="evenodd" d={svgPaths.p3caa4600} fill="var(--fill-0, black)" fillRule="evenodd" id="Vector" />
+            <path clipRule="evenodd" d={svgPaths.p3caa4600} fill={`var(--fill-0, ${iconFill})`} fillRule="evenodd" id="Vector" />
           </svg>
         </div>
         <div className="absolute inset-[13.66%_18.55%_26.56%_20.48%]" data-name="Vector">
           <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 10.9735 10.7612">
-            <path clipRule="evenodd" d={svgPaths.p3b675640} fill="var(--fill-0, black)" fillRule="evenodd" id="Vector" />
+            <path clipRule="evenodd" d={svgPaths.p3b675640} fill={`var(--fill-0, ${iconFill})`} fillRule="evenodd" id="Vector" />
           </svg>
         </div>
       </div>
-      <div className="flex flex-col font-['Red_Hat_Text_VF:Regular',sans-serif] font-normal justify-center leading-[0] relative shrink-0 text-[#151515] text-[14px] whitespace-nowrap">
+      <div className={`flex flex-col font-['Red_Hat_Text_VF:Regular',sans-serif] font-normal justify-center leading-[0] relative shrink-0 text-[14px] whitespace-nowrap ${disabled ? "text-[#A8A8A8]" : "text-[#151515]"}`}>
         <p className="leading-[21px]">MCP settings</p>
       </div>
     </div>
@@ -122,14 +124,19 @@ function Badge() {
   );
 }
 
-function MenuItem({ onMcpSettingsClick }: MenuProps) {
+function MenuItem({ onMcpSettingsClick, mcpSettingsDisabled }: MenuProps) {
   return (
-    <div 
-      onClick={onMcpSettingsClick}
-      className="absolute bg-[rgba(255,255,255,0)] hover:bg-[#f2f2f2] content-stretch flex flex-col gap-[4px] items-start justify-center left-0 px-[24px] py-[8px] top-[256px] w-full cursor-pointer transition-colors" 
+    <div
+      onClick={mcpSettingsDisabled ? undefined : onMcpSettingsClick}
+      aria-disabled={mcpSettingsDisabled || undefined}
+      className={`absolute bg-[rgba(255,255,255,0)] content-stretch flex flex-col gap-[4px] items-start justify-center left-0 px-[24px] py-[8px] top-[256px] w-full transition-colors ${
+        mcpSettingsDisabled
+          ? "cursor-not-allowed"
+          : "cursor-pointer hover:bg-[#f2f2f2]"
+      }`}
       data-name=".MenuItem"
     >
-      <Frame6 />
+      <Frame6 disabled={mcpSettingsDisabled} />
     </div>
   );
 }
@@ -142,7 +149,7 @@ function Arrow() {
   );
 }
 
-function Menu1({ onMcpSettingsClick }: MenuProps) {
+function Menu1({ onMcpSettingsClick, mcpSettingsDisabled }: MenuProps) {
   return (
     <div className="absolute bg-white content-stretch flex flex-col h-[301px] items-start left-0 py-[8px] rounded-[6px] shadow-[0px_4px_9px_0px_rgba(41,41,41,0.15)] top-0 w-[320px]" data-name="Menu">
       <div className="bg-[rgba(255,255,255,0)] hover:bg-[#f2f2f2] relative shrink-0 w-full cursor-pointer transition-colors" data-name=".MenuItem">
@@ -179,7 +186,7 @@ function Menu1({ onMcpSettingsClick }: MenuProps) {
           <div className="content-stretch flex flex-col gap-[4px] items-start justify-center px-[24px] py-[8px] w-full" />
         </div>
       </div>
-      <MenuItem onMcpSettingsClick={onMcpSettingsClick} />
+      <MenuItem onMcpSettingsClick={onMcpSettingsClick} mcpSettingsDisabled={mcpSettingsDisabled} />
       <div className="absolute left-[155px] size-[24px] top-[269px]" data-name="Cursors / Pointer">
         <Arrow />
       </div>
@@ -205,10 +212,10 @@ function Group() {
   );
 }
 
-export default function Menu({ onMcpSettingsClick }: MenuProps) {
+export default function Menu({ onMcpSettingsClick, mcpSettingsDisabled }: MenuProps) {
   return (
     <div className="relative size-full" data-name="menu">
-      <Menu1 onMcpSettingsClick={onMcpSettingsClick} />
+      <Menu1 onMcpSettingsClick={onMcpSettingsClick} mcpSettingsDisabled={mcpSettingsDisabled} />
       <Group />
     </div>
   );
