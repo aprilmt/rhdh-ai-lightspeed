@@ -604,7 +604,7 @@ export default function Home() {
   const [draggedChatTitle, setDraggedChatTitle] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [draggingSessionId, setDraggingSessionId] = useState<number | null>(null);
-  const [dragOverSessionId, setDragOverSessionId] = useState<number | null>(null);
+  const [sessionDropTarget, setSessionDropTarget] = useState<{ id: number; edge: "left" | "right" | "top" | "bottom" } | null>(null);
   const [resizingSession, setResizingSession] = useState<{ id: number; startX: number; startY: number; startW: number; startH: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -831,15 +831,32 @@ export default function Home() {
   };
 
   // --- Reorder open session panes ---
-  const reorderSessions = (draggedId: number, targetId: number) => {
+  const getDropEdge = (e: React.DragEvent): "left" | "right" | "top" | "bottom" => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const distLeft = x;
+    const distRight = rect.width - x;
+    const distTop = y;
+    const distBottom = rect.height - y;
+    const nearest = Math.min(distLeft, distRight, distTop, distBottom);
+    if (nearest === distLeft) return "left";
+    if (nearest === distRight) return "right";
+    if (nearest === distTop) return "top";
+    return "bottom";
+  };
+
+  const reorderSessions = (draggedId: number, targetId: number, edge: "left" | "right" | "top" | "bottom") => {
     setOpenSessions((prev) => {
       if (draggedId === targetId) return prev;
       const arr = [...prev];
       const from = arr.findIndex((s) => s.id === draggedId);
-      const to = arr.findIndex((s) => s.id === targetId);
-      if (from < 0 || to < 0) return prev;
+      if (from < 0) return prev;
       const [moved] = arr.splice(from, 1);
-      arr.splice(to, 0, moved);
+      const to = arr.findIndex((s) => s.id === targetId);
+      if (to < 0) return prev;
+      const insertAt = edge === "right" || edge === "bottom" ? to + 1 : to;
+      arr.splice(insertAt, 0, moved);
       return arr;
     });
   };
@@ -852,24 +869,28 @@ export default function Home() {
 
   const handleSessionDragEnd = () => {
     setDraggingSessionId(null);
-    setDragOverSessionId(null);
+    setSessionDropTarget(null);
   };
 
   const handleSessionDragOver = (e: React.DragEvent, id: number) => {
-    if (draggingSessionId === null) return;
+    if (draggingSessionId === null || draggingSessionId === id) return;
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
-    if (dragOverSessionId !== id) setDragOverSessionId(id);
+    const edge = getDropEdge(e);
+    setSessionDropTarget((current) =>
+      current?.id === id && current.edge === edge ? current : { id, edge }
+    );
   };
 
   const handleSessionDrop = (e: React.DragEvent, id: number) => {
-    if (draggingSessionId === null) return;
+    if (draggingSessionId === null || draggingSessionId === id) return;
     e.preventDefault();
     e.stopPropagation();
-    reorderSessions(draggingSessionId, id);
+    const edge = sessionDropTarget?.id === id ? sessionDropTarget.edge : getDropEdge(e);
+    reorderSessions(draggingSessionId, id, edge);
     setDraggingSessionId(null);
-    setDragOverSessionId(null);
+    setSessionDropTarget(null);
   };
 
   useEffect(() => {
@@ -1224,18 +1245,36 @@ export default function Home() {
                 </div>
 
                 <div className="flex flex-wrap gap-4 items-start">
-                  {openSessions.map((session) => (
+                  {openSessions.map((session) => {
+                    const dropEdge =
+                      sessionDropTarget?.id === session.id && draggingSessionId !== session.id
+                        ? sessionDropTarget.edge
+                        : null;
+                    return (
                     <div
                       key={session.id}
                       onDragOver={(e) => handleSessionDragOver(e, session.id)}
+                      onDragLeave={() => {
+                        if (sessionDropTarget?.id === session.id) setSessionDropTarget(null);
+                      }}
                       onDrop={(e) => handleSessionDrop(e, session.id)}
                       style={{ width: `${session.width ?? 460}px`, height: `${session.height ?? 440}px` }}
-                      className={`relative bg-white border rounded-lg shadow-sm flex flex-col overflow-hidden transition-colors ${
-                        dragOverSessionId === session.id && draggingSessionId !== session.id
-                          ? "border-primary ring-2 ring-primary/40"
-                          : "border-border"
-                      } ${draggingSessionId === session.id ? "opacity-50" : ""}`}
+                      className={`relative bg-white border border-border rounded-lg shadow-sm flex flex-col overflow-hidden transition-opacity ${
+                        draggingSessionId === session.id ? "opacity-50" : ""
+                      }`}
                     >
+                      {dropEdge === "left" && (
+                        <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-primary z-20 pointer-events-none" />
+                      )}
+                      {dropEdge === "right" && (
+                        <div className="absolute right-0 top-2 bottom-2 w-[3px] rounded-full bg-primary z-20 pointer-events-none" />
+                      )}
+                      {dropEdge === "top" && (
+                        <div className="absolute top-0 left-2 right-2 h-[3px] rounded-full bg-primary z-20 pointer-events-none" />
+                      )}
+                      {dropEdge === "bottom" && (
+                        <div className="absolute bottom-0 left-2 right-2 h-[3px] rounded-full bg-primary z-20 pointer-events-none" />
+                      )}
                       {/* Session header (drag handle for reordering) */}
                       <div
                         draggable
@@ -1301,7 +1340,7 @@ export default function Home() {
                           >
                             <div className="size-[18px]">
                               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 17.0832 14.5831">
-                                <path d={svgPaths.p3eea9c00} fill="var(--muted-foreground)" />
+                                <path d={svgPaths.p3eea9c00} fill={session.input.trim() ? "var(--primary)" : "var(--muted-foreground)"} />
                               </svg>
                             </div>
                           </button>
@@ -1319,7 +1358,8 @@ export default function Home() {
                         </svg>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
