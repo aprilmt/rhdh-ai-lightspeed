@@ -72,23 +72,122 @@ function documentBadge(name: string) {
   return { label: (extension || "FILE").slice(0, 4).toUpperCase(), className: "bg-secondary text-muted-foreground" };
 }
 
+function RenameNotebookModal({
+  value,
+  onChange,
+  onClose,
+  onSave,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rename-notebook-title"
+        className="relative w-[min(560px,calc(100vw-32px))] rounded-[24px] bg-white px-6 pb-6 pt-6 shadow-[0px_10px_20px_0px_rgba(41,41,41,0.15)] font-[family-name:var(--font-family-text)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full hover:bg-[#f2f2f2] transition-colors"
+          aria-label="Close"
+        >
+          <svg className="size-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6.4 19 5 17.6 10.6 12 5 6.4 6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19Z" fill="#1F1F1F" />
+          </svg>
+        </button>
+
+        <h2 id="rename-notebook-title" className="pr-10 text-[20px] font-medium leading-[26px] tracking-[-0.25px] text-[#151515]">
+          Rename notebook
+        </h2>
+        <p className="mt-2 text-[14px] font-normal leading-[24px] text-[#4d4d4d]">
+          Enter a new name for this notebook.
+        </p>
+
+        <label className="mt-6 block">
+          <span className="mb-2 block text-[12px] font-normal leading-[16px] text-[#151515]">
+            Name
+          </span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && value.trim()) onSave();
+              if (e.key === "Escape") onClose();
+            }}
+            className="h-10 w-full rounded-[6px] border-2 border-[#06c] px-4 font-[family-name:var(--font-family-text)] text-[16px] font-normal text-[#151515] outline-none"
+          />
+        </label>
+
+        <div className="mt-8 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={!value.trim()}
+            className="h-10 rounded-full bg-[#06c] px-4 text-[16px] font-normal text-white hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 rounded-full border border-[#06c] px-4 text-[16px] font-normal text-[#06c] hover:bg-[#f2f2f2] transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NotebookWorkspace({
   title,
   initialDocuments,
   panelOpen,
   onTogglePanel,
   onClose,
+  onTitleChange,
 }: {
   title: string;
   initialDocuments: NotebookDocument[];
   panelOpen: boolean;
   onTogglePanel: () => void;
   onClose: () => void;
+  onTitleChange?: (title: string) => void;
 }) {
   const [showNotice, setShowNotice] = useState(true);
   const [documents, setDocuments] = useState<NotebookDocument[]>(initialDocuments);
   const [documentMenu, setDocumentMenu] = useState<string | null>(null);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(title);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setTitleDraft(title);
+  }, [title]);
+
+  useEffect(() => {
+    if (!isEditingTitle) return;
+    titleInputRef.current?.focus();
+    titleInputRef.current?.select();
+  }, [isEditingTitle]);
 
   const addDocuments = (files: FileList | null) => {
     if (!files?.length) return;
@@ -104,6 +203,18 @@ function NotebookWorkspace({
     setDocumentMenu(null);
   };
 
+  const commitTitle = () => {
+    const nextTitle = titleDraft.trim() || title;
+    setTitleDraft(nextTitle);
+    setIsEditingTitle(false);
+    if (nextTitle !== title) onTitleChange?.(nextTitle);
+  };
+
+  const cancelTitleEdit = () => {
+    setTitleDraft(title);
+    setIsEditingTitle(false);
+  };
+
   return (
     <div className="absolute inset-0 flex bg-background">
       <input
@@ -116,10 +227,52 @@ function NotebookWorkspace({
       {panelOpen && (
         <aside className="w-[280px] shrink-0 border-r border-[#d2d2d2] flex flex-col bg-background">
           <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-4">
-            <span className="text-[15px] font-medium text-[#151515] truncate">{title}</span>
+            {isEditingTitle ? (
+              <input
+                ref={titleInputRef}
+                type="text"
+                value={titleDraft}
+                onChange={(event) => setTitleDraft(event.target.value)}
+                onBlur={commitTitle}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    commitTitle();
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    cancelTitleEdit();
+                  }
+                }}
+                aria-label="Notebook title"
+                className="min-w-0 flex-1 rounded border-2 border-[#06c] bg-white px-2 py-0.5 text-[15px] font-medium text-[#151515] outline-none font-[family-name:var(--font-family-text)]"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsEditingTitle(true)}
+                title="Rename notebook"
+                className="group/title min-w-0 flex-1 inline-flex items-center gap-1.5 rounded px-1 -mx-1 text-left text-[15px] font-medium text-[#151515] hover:bg-[#e7f1fa] transition-colors"
+              >
+                <span className="min-w-0 flex-1 truncate">{title}</span>
+                <svg
+                  className="size-3.5 shrink-0 text-[#6a6e73] opacity-0 group-hover/title:opacity-100 transition-opacity pointer-events-none"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M11.3 2.3a1.4 1.4 0 0 1 2 2L5.2 12.3 2 13.1l.8-3.2L11.3 2.3Z"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            )}
             <button
               onClick={onTogglePanel}
-              className="p-2 rounded bg-card text-muted-foreground shadow-sm hover:bg-accent/10 transition-colors"
+              className="p-2 rounded bg-card text-muted-foreground shadow-sm hover:bg-accent/10 transition-colors shrink-0"
               aria-label="Collapse documents"
             >
               <div className="size-[24px]">
@@ -128,7 +281,7 @@ function NotebookWorkspace({
             </button>
           </div>
           <div className="flex items-center justify-between gap-3 px-5 py-2">
-            <span className="text-[15px] font-medium text-[#151515]">
+            <span className="text-[15px] font-normal text-[#6a6e73]">
               {documents.length} {documents.length === 1 ? "Document" : "Documents"}
             </span>
             <button
@@ -149,7 +302,7 @@ function NotebookWorkspace({
                 const badge = documentBadge(document.name);
                 return (
                   <li key={document.id} className="flex items-center gap-2 py-2">
-                    <span className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-medium leading-none ${badge.className}`}>
+                    <span className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-semibold leading-none ${badge.className}`}>
                       {badge.label}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-sm text-[#151515]" title={document.name}>
@@ -231,11 +384,13 @@ function NotebookWorkspace({
             </div>
           )}
           <button
+            type="button"
             onClick={onClose}
-            className="text-primary text-sm font-medium flex items-center gap-1.5 hover:underline"
+            className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-primary text-sm font-medium hover:bg-[#e8e8e8] transition-colors"
+            aria-label="Close notebook"
           >
-            Close notebook
-            <svg className="size-3.5" viewBox="0 0 16 16" fill="none">
+            <span>Close notebook</span>
+            <svg className="size-3.5 pointer-events-none" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
           </button>
@@ -248,9 +403,13 @@ function NotebookWorkspace({
             src={`${import.meta.env.BASE_URL}notebook-book.png`}
           />
           <h2 className="text-[20px] font-medium text-[#151515] mb-5">Upload a resource to get started</h2>
-          <button className="inline-flex items-center gap-2 rounded-full border border-primary text-primary px-4 py-1.5 text-sm font-medium hover:bg-primary/5 transition-colors">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-2 rounded-full border border-primary text-primary px-4 py-1.5 text-sm font-medium hover:bg-primary/5 transition-colors"
+          >
             Upload a resource
-            <svg className="size-4" viewBox="0 0 16 16" fill="none">
+            <svg className="size-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M8 10.2V3.4M8 3.4 5.6 5.8M8 3.4l2.4 2.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M3.2 10.2v1.3A1.5 1.5 0 0 0 4.7 13h6.6a1.5 1.5 0 0 0 1.5-1.5v-1.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
@@ -433,6 +592,14 @@ export default function Home() {
   const [notebookMenuOpen, setNotebookMenuOpen] = useState<number | null>(null);
   const [notebookOpen, setNotebookOpen] = useState<"new" | "onboarding" | null>(null);
   const [notebookPanelOpen, setNotebookPanelOpen] = useState(true);
+  const [notebookTitles, setNotebookTitles] = useState({
+    0: "Onboarding RHDH",
+    1: "CI/CD Pipeline",
+    2: "Untitled notebook",
+  });
+  const [newNotebookTitle, setNewNotebookTitle] = useState("Untitled Notebook");
+  const [renameNotebookIndex, setRenameNotebookIndex] = useState<number | null>(null);
+  const [renameNotebookDraft, setRenameNotebookDraft] = useState("");
   const [openSessions, setOpenSessions] = useState<Array<{ id: number; title: string; input: string; messages: Array<{ role: string; content: string }>; width?: number; height?: number }>>([]);
   const [draggedChatTitle, setDraggedChatTitle] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -853,13 +1020,21 @@ export default function Home() {
               notebookOpen ? (
               <NotebookWorkspace
                 key={notebookOpen}
-                title={notebookOpen === "onboarding" ? "Onboarding RHDH" : "Untitled Notebook"}
+                title={notebookOpen === "onboarding" ? notebookTitles[0] : newNotebookTitle}
                 initialDocuments={notebookOpen === "onboarding" ? ONBOARDING_DOCUMENTS : []}
                 panelOpen={notebookPanelOpen}
                 onTogglePanel={() => setNotebookPanelOpen((open) => !open)}
+                onTitleChange={(nextTitle) => {
+                  if (notebookOpen === "onboarding") {
+                    setNotebookTitles((current) => ({ ...current, 0: nextTitle }));
+                  } else {
+                    setNewNotebookTitle(nextTitle);
+                  }
+                }}
                 onClose={() => {
                   setNotebookOpen(null);
                   setNotebookPanelOpen(true);
+                  setNewNotebookTitle("Untitled Notebook");
                 }}
               />
               ) : (
@@ -869,7 +1044,10 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-6">
                   <h1 className="text-xl font-semibold text-[#151515]">My Notebooks</h1>
                   <button
-                    onClick={() => setNotebookOpen("new")}
+                    onClick={() => {
+                      setNewNotebookTitle("Untitled Notebook");
+                      setNotebookOpen("new");
+                    }}
                     className="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors"
                   >
                     <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -881,141 +1059,81 @@ export default function Home() {
                 
                 {/* Notebook cards grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {/* Onboarding RHDH */}
-                  <div
-                    onClick={() => setNotebookOpen("onboarding")}
-                    className="bg-white border border-border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group min-h-[120px]"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="size-5 text-primary">
-                          <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
-                            <path d="M7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>
-                          </svg>
-                        </div>
-                        <span className="font-medium text-[#151515]">Onboarding RHDH</span>
-                      </div>
-                      <div className="relative">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(notebookMenuOpen === 0 ? null : 0); }}
-                          className="rounded-full p-1 text-muted-foreground hover:bg-[#e8e8e8] hover:text-foreground transition-colors"
-                        >
-                          <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
-                            <circle cx="12" cy="5" r="2"/>
-                            <circle cx="12" cy="12" r="2"/>
-                            <circle cx="12" cy="19" r="2"/>
-                          </svg>
-                        </button>
-                        {notebookMenuOpen === 0 && (
-                          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] py-1 min-w-[150px] z-50">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
-                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
-                            >
-                              Rename
-                            </button>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
-                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
-                            >
-                              Delete
-                            </button>
+                  {[
+                    { index: 0, documents: "3 Documents", open: () => setNotebookOpen("onboarding") },
+                    { index: 1, documents: "3 Documents", open: undefined },
+                    { index: 2, documents: "0 Documents", open: undefined },
+                  ].map((card) => (
+                    <div
+                      key={card.index}
+                      onClick={card.open}
+                      className="bg-white border border-border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group min-h-[120px]"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="size-5 text-primary shrink-0">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                              <path d="M7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>
+                            </svg>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">3 Documents</p>
-                  </div>
-                  
-                  {/* CI/CD Pipeline */}
-                  <div className="bg-white border border-border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group min-h-[120px]">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="size-5 text-primary">
-                          <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
-                            <path d="M7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>
-                          </svg>
+                          <span className="font-medium text-[#151515] truncate">{notebookTitles[card.index as 0 | 1 | 2]}</span>
                         </div>
-                        <span className="font-medium text-[#151515]">CI/CD Pipeline</span>
-                      </div>
-                      <div className="relative">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(notebookMenuOpen === 1 ? null : 1); }}
-                          className="rounded-full p-1 text-muted-foreground hover:bg-[#e8e8e8] hover:text-foreground transition-colors"
-                        >
-                          <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
-                            <circle cx="12" cy="5" r="2"/>
-                            <circle cx="12" cy="12" r="2"/>
-                            <circle cx="12" cy="19" r="2"/>
-                          </svg>
-                        </button>
-                        {notebookMenuOpen === 1 && (
-                          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] py-1 min-w-[150px] z-50">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
-                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
-                            >
-                              Rename
-                            </button>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
-                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">3 Documents</p>
-                  </div>
-                  
-                  {/* Untitled notebook */}
-                  <div className="bg-white border border-border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group min-h-[120px]">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="size-5 text-primary">
-                          <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
-                            <path d="M7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>
-                          </svg>
+                        <div className="relative shrink-0">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(notebookMenuOpen === card.index ? null : card.index); }}
+                            className="rounded-full p-1 text-muted-foreground hover:bg-[#e8e8e8] hover:text-foreground transition-colors"
+                          >
+                            <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
+                              <circle cx="12" cy="5" r="2"/>
+                              <circle cx="12" cy="12" r="2"/>
+                              <circle cx="12" cy="19" r="2"/>
+                            </svg>
+                          </button>
+                          {notebookMenuOpen === card.index && (
+                            <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] py-1 min-w-[150px] z-50">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNotebookMenuOpen(null);
+                                  setRenameNotebookIndex(card.index);
+                                  setRenameNotebookDraft(notebookTitles[card.index as 0 | 1 | 2]);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
+                              >
+                                Rename
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
+                                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
                         </div>
-                        <span className="font-medium text-[#151515]">Untitled notebook</span>
                       </div>
-                      <div className="relative">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(notebookMenuOpen === 2 ? null : 2); }}
-                          className="rounded-full p-1 text-muted-foreground hover:bg-[#e8e8e8] hover:text-foreground transition-colors"
-                        >
-                          <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
-                            <circle cx="12" cy="5" r="2"/>
-                            <circle cx="12" cy="12" r="2"/>
-                            <circle cx="12" cy="19" r="2"/>
-                          </svg>
-                        </button>
-                        {notebookMenuOpen === 2 && (
-                          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] py-1 min-w-[150px] z-50">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
-                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
-                            >
-                              Rename
-                            </button>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setNotebookMenuOpen(null); }}
-                              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      <p className="text-sm text-muted-foreground">{card.documents}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">0 Documents</p>
-                  </div>
+                  ))}
                 </div>
+
+                {renameNotebookIndex !== null && (
+                  <RenameNotebookModal
+                    value={renameNotebookDraft}
+                    onChange={setRenameNotebookDraft}
+                    onClose={() => setRenameNotebookIndex(null)}
+                    onSave={() => {
+                      const nextTitle = renameNotebookDraft.trim();
+                      if (!nextTitle) return;
+                      setNotebookTitles((current) => ({
+                        ...current,
+                        [renameNotebookIndex]: nextTitle,
+                      }));
+                      setRenameNotebookIndex(null);
+                    }}
+                  />
+                )}
               </div>
               )
             ) : (

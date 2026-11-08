@@ -94,23 +94,19 @@ function Frame2() {
 }
 
 function Frame6({ disabled }: { disabled?: boolean }) {
-  const iconFill = disabled ? "#A8A8A8" : "black";
+  const iconFill = disabled ? "#A8A8A8" : "#151515";
   return (
     <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
-      <div className="overflow-clip relative shrink-0 size-[18px]" data-name="mcp 1">
-        <div className="absolute inset-[-0.25%_4.17%_0.25%_4.17%]" data-name="Vector">
-          <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16.5002 18.0002">
-            <path clipRule="evenodd" d={svgPaths.p3caa4600} fill={`var(--fill-0, ${iconFill})`} fillRule="evenodd" id="Vector" />
-          </svg>
-        </div>
-        <div className="absolute inset-[13.66%_18.55%_26.56%_20.48%]" data-name="Vector">
-          <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 10.9735 10.7612">
-            <path clipRule="evenodd" d={svgPaths.p3b675640} fill={`var(--fill-0, ${iconFill})`} fillRule="evenodd" id="Vector" />
-          </svg>
-        </div>
+      <div className="relative shrink-0 size-[18px]" data-name="gear">
+        <svg className="absolute block size-full" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill={iconFill}
+            d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81a.49.49 0 0 0-.49-.41h-3.82a.49.49 0 0 0-.49.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.71 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.49.41h3.82c.24 0 .44-.17.49-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.03-1.58ZM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2Z"
+          />
+        </svg>
       </div>
       <div className={`flex flex-col font-['Red_Hat_Text_VF:Regular',sans-serif] font-normal justify-center leading-[0] relative shrink-0 text-[14px] whitespace-nowrap ${disabled ? "text-[#A8A8A8]" : "text-[#151515]"}`}>
-        <p className="leading-[21px]">MCP settings</p>
+        <p className="leading-[21px]">Chat settings</p>
       </div>
     </div>
   );
