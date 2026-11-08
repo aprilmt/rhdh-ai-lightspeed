@@ -34,6 +34,22 @@ function formatStamp(date: Date) {
   });
 }
 
+function formatUpdatedAt(timestamp: number) {
+  const diffMs = Math.max(0, Date.now() - timestamp);
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "Updated just now";
+  if (minutes < 60) return `Updated ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Updated ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `Updated ${days} day${days === 1 ? "" : "s"} ago`;
+  return `Updated ${new Date(timestamp).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`;
+}
+
 function GuestIcon() {
   return (
     <div className="size-[36px] relative shrink-0 rounded-full overflow-hidden" aria-hidden="true">
@@ -584,7 +600,7 @@ export default function Home() {
   const [showMcpDrawer, setShowMcpDrawer] = useState(false);
   const [mcpToolsEnabled, setMcpToolsEnabled] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [containerHeight, setContainerHeight] = useState(109);
+  const [containerHeight, setContainerHeight] = useState(76);
   const [leftPanelWidth, setLeftPanelWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
   const [showMcpPromo, setShowMcpPromo] = useState(true);
@@ -597,9 +613,18 @@ export default function Home() {
     1: "CI/CD Pipeline",
     2: "Untitled notebook",
   });
+  const [notebookUpdatedAt, setNotebookUpdatedAt] = useState({
+    0: Date.now() - 2 * 60 * 60 * 1000,
+    1: Date.now() - 26 * 60 * 60 * 1000,
+    2: Date.now() - 5 * 60 * 1000,
+  });
   const [newNotebookTitle, setNewNotebookTitle] = useState("Untitled Notebook");
   const [renameNotebookIndex, setRenameNotebookIndex] = useState<number | null>(null);
   const [renameNotebookDraft, setRenameNotebookDraft] = useState("");
+
+  const touchNotebookUpdatedAt = (index: 0 | 1 | 2) => {
+    setNotebookUpdatedAt((current) => ({ ...current, [index]: Date.now() }));
+  };
   const [openSessions, setOpenSessions] = useState<Array<{ id: number; title: string; input: string; messages: Array<{ role: string; content: string }>; width?: number; height?: number }>>([]);
   const [draggedChatTitle, setDraggedChatTitle] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -714,7 +739,6 @@ export default function Home() {
 
   const handleActionCardClick = (card: ActionCard) => {
     setPrompt(card.description);
-    setShowChatPanel(true);
   };
 
   const handleNewChat = () => {
@@ -907,7 +931,7 @@ export default function Home() {
       // Set height based on scroll height (content)
       const newHeight = Math.min(textarea.scrollHeight, 120); // Max 120px (about 4 lines)
       textarea.style.height = `${newHeight}px`;
-      setContainerHeight(Math.max(109, parseInt(textarea.style.height || '32') + 48));
+      setContainerHeight(Math.max(76, parseInt(textarea.style.height || '32') + 44));
     }
   }, [prompt]);
 
@@ -948,13 +972,17 @@ export default function Home() {
         </div>
 
         <div className="ml-auto relative">
-          <button className="size-[24px] hover:bg-[rgba(199,199,199,0.25)] rounded-full transition-colors" onClick={() => { setShowHeaderMenu(!showHeaderMenu); setShowMcpPromo(false); }}>
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24"><path></path><path d={svgPaths.p34810300} fill="var(--foreground)" /></svg>
+          <button
+            className="size-[40px] rounded-full hover:bg-[rgba(199,199,199,0.25)] transition-colors flex items-center justify-center"
+            onClick={() => { setShowHeaderMenu(!showHeaderMenu); setShowMcpPromo(false); }}
+            aria-label="More options"
+          >
+            <svg className="block size-[24px]" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24" aria-hidden="true"><path></path><path d={svgPaths.p34810300} fill="var(--foreground)" /></svg>
           </button>
 
           {/* MCP Feature Promo Popover - PatternFly Hint Style */}
           {showMcpPromo && (
-            <div className="absolute right-[-8px] top-[36px] z-50 w-[320px] animate-[slideInDown_0.3s_ease-out]">
+            <div className="absolute right-[-8px] top-[44px] z-50 w-[320px] animate-[slideInDown_0.3s_ease-out]">
               <div className="bg-white text-[#151515] rounded-[16px] border-2 border-[#5e40be] relative">
                 {/* Hint Title */}
                 <div className="flex items-start justify-between gap-2 px-6 pt-4 pb-2">
@@ -991,7 +1019,7 @@ export default function Home() {
           )}
 
           {showHeaderMenu && (
-            <div className="absolute right-0 top-[30px] z-50 w-[320px]">
+            <div className="absolute right-0 top-[44px] z-50 w-[320px]">
               <Menu onMcpSettingsClick={handleMcpSettingsClick} mcpSettingsDisabled={activeTab === "notebooks"} />
             </div>
           )}
@@ -1048,6 +1076,7 @@ export default function Home() {
                 onTitleChange={(nextTitle) => {
                   if (notebookOpen === "onboarding") {
                     setNotebookTitles((current) => ({ ...current, 0: nextTitle }));
+                    touchNotebookUpdatedAt(0);
                   } else {
                     setNewNotebookTitle(nextTitle);
                   }
@@ -1081,14 +1110,14 @@ export default function Home() {
                 {/* Notebook cards grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {[
-                    { index: 0, documents: "3 Documents", open: () => setNotebookOpen("onboarding") },
-                    { index: 1, documents: "3 Documents", open: undefined },
-                    { index: 2, documents: "0 Documents", open: undefined },
+                    { index: 0 as const, documents: "3 Documents", open: () => setNotebookOpen("onboarding") },
+                    { index: 1 as const, documents: "3 Documents", open: undefined },
+                    { index: 2 as const, documents: "0 Documents", open: undefined },
                   ].map((card) => (
                     <div
                       key={card.index}
                       onClick={card.open}
-                      className="bg-white border border-border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group min-h-[120px]"
+                      className="@container bg-white border border-border rounded-lg p-5 hover:shadow-md transition-shadow cursor-pointer group min-h-[120px] flex flex-col"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2 min-w-0">
@@ -1098,7 +1127,7 @@ export default function Home() {
                               <path d="M7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>
                             </svg>
                           </div>
-                          <span className="font-medium text-[#151515] truncate">{notebookTitles[card.index as 0 | 1 | 2]}</span>
+                          <span className="font-medium text-[#151515] truncate">{notebookTitles[card.index]}</span>
                         </div>
                         <div className="relative shrink-0">
                           <button
@@ -1118,7 +1147,7 @@ export default function Home() {
                                   e.stopPropagation();
                                   setNotebookMenuOpen(null);
                                   setRenameNotebookIndex(card.index);
-                                  setRenameNotebookDraft(notebookTitles[card.index as 0 | 1 | 2]);
+                                  setRenameNotebookDraft(notebookTitles[card.index]);
                                 }}
                                 className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-secondary/50 transition-colors"
                               >
@@ -1134,7 +1163,12 @@ export default function Home() {
                           )}
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground">{card.documents}</p>
+                      <div className="mt-auto flex flex-col gap-0.5 pt-1 @[260px]:flex-row @[260px]:items-center @[260px]:justify-between @[260px]:gap-2">
+                        <p className="text-sm text-muted-foreground whitespace-nowrap">{card.documents}</p>
+                        <p className="text-xs text-[#6a6e73] whitespace-nowrap">
+                          {formatUpdatedAt(notebookUpdatedAt[card.index])}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1151,6 +1185,7 @@ export default function Home() {
                         ...current,
                         [renameNotebookIndex]: nextTitle,
                       }));
+                      touchNotebookUpdatedAt(renameNotebookIndex as 0 | 1 | 2);
                       setRenameNotebookIndex(null);
                     }}
                   />
@@ -1159,9 +1194,9 @@ export default function Home() {
               )
             ) : (
             <>
-            {/* Toggle buttons and divider */}
-            <div className="absolute top-4 left-4 z-10 flex items-start gap-4">
-              <div className="flex flex-col gap-3">
+            <div className="flex h-full min-h-0">
+            {/* Left rail — same width as the history/new-chat buttons so content isn't covered */}
+            <div className="w-10 shrink-0 ml-2 mt-4 flex flex-col gap-3 z-10">
                 <div className="relative group/chat-tooltip">
                   <button
                     onClick={toggleChatPanel}
@@ -1199,27 +1234,29 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className={`w-px bg-[#c7c7c7] h-full ${showChatPanel ? 'hidden' : ''}`} />
             </div>
+            <div className={`w-px bg-[#c7c7c7] shrink-0 self-stretch ml-2 ${showChatPanel ? 'hidden' : ''}`} />
 
+            <div className="flex-1 min-w-0 min-h-0 overflow-hidden relative">
             {openSessions.length > 0 ? (
               /* Parallel chat sessions workspace */
-              <div className="p-4 pt-16 h-full overflow-y-auto">
+              <div className="px-4 pb-4 pt-3 h-full overflow-y-auto">
                 {/* Model selector for sessions workspace */}
-                <div className="absolute top-4 right-4 z-20 flex items-center h-10">
+                <div className="flex justify-end items-center h-10 mb-3 z-20">
                   <div className="relative">
                     <button
                       onClick={() => setShowModelDropdown(!showModelDropdown)}
-                      className="text-[14px] font-medium text-muted-foreground hover:text-foreground hover:bg-[rgba(199,199,199,0.25)] transition-colors flex items-center gap-1 rounded-full border border-border px-3 py-1"
+                      className="text-[14px] font-normal text-[#151515] bg-[rgba(199,199,199,0.25)] hover:bg-[rgba(199,199,199,0.4)] transition-colors flex items-center gap-1 rounded-full px-3 py-1"
                     >
                       <span>{selectedModel}</span>
-                      <div className="size-[14px]">
-                        <svg className="block size-full" fill="none" viewBox="0 0 9.33333 6.02771">
-                          <path clipRule="evenodd" d="M0.390524 0.390524C0.585786 0.195262 0.902369 0.195262 1.09763 0.390524L4.66667 3.95956L8.2357 0.390524C8.43096 0.195262 8.74754 0.195262 8.94281 0.390524C9.13807 0.585786 9.13807 0.902369 8.94281 1.09763L5.02022 5.02022C4.82496 5.21548 4.50837 5.21548 4.31311 5.02022L0.390524 1.09763C0.195262 0.902369 0.195262 0.585786 0.390524 0.390524Z" fill="currentColor" fillRule="evenodd" />
-                        </svg>
-                      </div>
+                      <div
+                        className="size-[9px] shrink-0 self-center bg-current"
+                        style={{
+                          WebkitMask: `url(${import.meta.env.BASE_URL}caret-down-solid.png) center / contain no-repeat`,
+                          mask: `url(${import.meta.env.BASE_URL}caret-down-solid.png) center / contain no-repeat`,
+                        }}
+                        aria-hidden="true"
+                      />
                     </button>
 
                     {showModelDropdown && (
@@ -1338,9 +1375,12 @@ export default function Home() {
                             className="size-[32px] rounded-full hover:bg-muted/50 flex items-center justify-center transition-colors shrink-0"
                             aria-label="Send"
                           >
-                            <div className="size-[18px]">
-                              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 17.0832 14.5831">
-                                <path d={svgPaths.p3eea9c00} fill={session.input.trim() ? "var(--primary)" : "var(--muted-foreground)"} />
+                            <div className="size-[14px] shrink-0 flex items-center justify-center">
+                              <svg className="block size-[14px]" viewBox="0 0 512 512" aria-hidden="true">
+                                <path
+                                  fill={session.input.trim() ? "var(--primary)" : "var(--muted-foreground)"}
+                                  d="M498.1 5.6c10.1 7 15.4 19.1 13.5 31.2l-64 416c-1.5 9.7-7.4 18.2-16 23s-18.9 5.4-28 1.6L284 427.7l-68.5 74.1c-8.9 9.7-22.9 12.9-35.2 8.1S160 493.2 160 480l0-83.6c0-4 1.5-7.8 4.2-10.8L331.8 202.8c5.8-6.3 5.6-16-.4-22s-15.7-6.4-22-.7L106 360.8 17.7 316.6C7.1 311.3 .3 300.7 0 288.9s5.9-22.8 16.1-28.7l448-256c10.7-6.1 23.9-5.5 34 1.4z"
+                                />
                               </svg>
                             </div>
                           </button>
@@ -1366,7 +1406,7 @@ export default function Home() {
             <div className="flex flex-col h-full min-h-0">
             {/* Chat Messages */}
             {chatHistory.length > 0 && (
-              <div ref={messagesRef} className="flex-1 min-h-0 overflow-y-auto p-6 pt-16">
+              <div ref={messagesRef} className="flex-1 min-h-0 overflow-y-auto px-6 pt-4 pb-6">
                 <div className="max-w-[900px] mx-auto pb-6">
                 {chatHistory.map((message, index) => (
                   <div key={index} className="mb-6 text-left" style={message.role === "assistant" ? { animation: "lsp-fade-up 0.45s ease-out" } : undefined}>
@@ -1489,11 +1529,14 @@ export default function Home() {
                       className="text-[14px] font-medium text-muted-foreground hover:text-foreground hover:bg-[rgba(199,199,199,0.25)] transition-colors flex items-center gap-1 rounded-full px-2 py-1"
                     >
                       <span>{selectedModel}</span>
-                      <div className="size-[14px]">
-                        <svg className="block size-full" fill="none" viewBox="0 0 9.33333 6.02771">
-                          <path clipRule="evenodd" d="M0.390524 0.390524C0.585786 0.195262 0.902369 0.195262 1.09763 0.390524L4.66667 3.95956L8.2357 0.390524C8.43096 0.195262 8.74754 0.195262 8.94281 0.390524C9.13807 0.585786 9.13807 0.902369 8.94281 1.09763L5.02022 5.02022C4.82496 5.21548 4.50837 5.21548 4.31311 5.02022L0.390524 1.09763C0.195262 0.902369 0.195262 0.585786 0.390524 0.390524Z" fill="currentColor" fillRule="evenodd" />
-                        </svg>
-                      </div>
+                      <div
+                        className="size-[9px] shrink-0 self-center bg-current"
+                        style={{
+                          WebkitMask: `url(${import.meta.env.BASE_URL}caret-down-solid.png) center / contain no-repeat`,
+                          mask: `url(${import.meta.env.BASE_URL}caret-down-solid.png) center / contain no-repeat`,
+                        }}
+                        aria-hidden="true"
+                      />
                     </button>
 
                     {showModelDropdown && (
@@ -1530,33 +1573,39 @@ export default function Home() {
                     }
                   }}
                   placeholder="Enter a prompt for Lightspeed"
-                  className="absolute top-[4px] left-[4px] w-[calc(100%-8px)] min-h-[32px] max-h-[120px] pl-[16px] pr-[100px] pt-[8px] pb-[24px] bg-transparent outline-none text-[16px] text-foreground placeholder:text-[#c7c7c7] resize-none overflow-y-hidden"
+                  className="absolute top-[4px] left-[4px] w-[calc(100%-8px)] min-h-[28px] max-h-[120px] pl-[16px] pr-[100px] pt-[6px] pb-[20px] bg-transparent outline-none text-[16px] font-normal text-foreground placeholder:font-normal placeholder:text-[#8a8d90] resize-none overflow-y-hidden"
                   rows={1}
-                  style={{ paddingBottom: '24px' }}
+                  style={{ paddingBottom: '20px' }}
                 />
 
                 {/* Action Buttons - Bottom Right */}
-                <div className="absolute bottom-[6px] right-[6px] flex gap-[4px] items-center z-10">
+                <div className="absolute bottom-[6px] right-[12px] flex gap-[4px] items-center z-10">
                   <button
                     onClick={() => alert("Voice input")}
-                    className="size-[40px] rounded-full hover:bg-muted/50 flex items-center justify-center transition-colors"
+                    className="size-[28px] rounded-full flex items-center justify-center hover:bg-[rgba(199,199,199,0.25)] transition-colors"
+                    aria-label="Voice input"
                   >
-                    <div className="size-[20px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-                        <rect x="7.5" y="3.33" width="5" height="8.33" rx="2.5" stroke="var(--muted-foreground)" strokeWidth="1.5" fill="none" />
-                        <path d="M5 10a5 5 0 0010 0" stroke="var(--muted-foreground)" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-                        <path d="M10 15v2" stroke="var(--muted-foreground)" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
-                    </div>
+                    <div
+                      className="size-[16px] shrink-0 bg-[var(--muted-foreground)]"
+                      style={{
+                        WebkitMask: `url(${import.meta.env.BASE_URL}microphone-solid.png) center / contain no-repeat`,
+                        mask: `url(${import.meta.env.BASE_URL}microphone-solid.png) center / contain no-repeat`,
+                      }}
+                      aria-hidden="true"
+                    />
                   </button>
 
                   <button
                     onClick={handleSendMessage}
-                    className="size-[40px] rounded-full hover:bg-muted/50 flex items-center justify-center transition-colors"
+                    className="size-[28px] rounded-full flex items-center justify-center hover:bg-[rgba(199,199,199,0.25)] transition-colors"
+                    aria-label="Send"
                   >
-                    <div className="size-[20px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 17.0832 14.5831">
-                        <path d={svgPaths.p3eea9c00} fill={prompt.trim() ? "var(--primary)" : "var(--muted-foreground)"} />
+                    <div className="size-[14px] shrink-0 flex items-center justify-center">
+                      <svg className="block size-[14px]" viewBox="0 0 512 512" aria-hidden="true">
+                        <path
+                          fill={prompt.trim() ? "var(--primary)" : "var(--muted-foreground)"}
+                          d="M498.1 5.6c10.1 7 15.4 19.1 13.5 31.2l-64 416c-1.5 9.7-7.4 18.2-16 23s-18.9 5.4-28 1.6L284 427.7l-68.5 74.1c-8.9 9.7-22.9 12.9-35.2 8.1S160 493.2 160 480l0-83.6c0-4 1.5-7.8 4.2-10.8L331.8 202.8c5.8-6.3 5.6-16-.4-22s-15.7-6.4-22-.7L106 360.8 17.7 316.6C7.1 311.3 .3 300.7 0 288.9s5.9-22.8 16.1-28.7l448-256c10.7-6.1 23.9-5.5 34 1.4z"
+                        />
                       </svg>
                     </div>
                   </button>
@@ -1578,6 +1627,8 @@ export default function Home() {
             </div>
             </div>
             )}
+            </div>
+            </div>
             </>
             )}
           </div>
@@ -1652,7 +1703,7 @@ export default function Home() {
                 onClick={() => openChatSession("Help me document my code")}
                 className="w-full text-left p-2 hover:bg-secondary rounded flex items-center gap-2 mb-4 cursor-grab active:cursor-grabbing"
               >
-                <span className="text-sm text-foreground"> Help me document my code</span>
+                <span className="text-sm text-foreground">⭐ Help me document my code</span>
               </button>
 
               <p className="text-xs font-medium text-muted-foreground mb-2">Recent</p>
@@ -1664,9 +1715,14 @@ export default function Home() {
                   className="w-full text-left p-2 hover:bg-secondary rounded flex items-center gap-2 mb-1 cursor-grab active:cursor-grabbing"
                   onClick={() => openChatSession(item)}
                 >
-                  <div className="size-[16px] shrink-0">
-                    <svg className="block size-full" fill="none" viewBox="0 0 16 16">
-                      <rect width="16" height="16" rx="2" fill="var(--muted)" />
+                  <div className="size-[16px] shrink-0 text-muted-foreground">
+                    <svg className="block size-full" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path
+                        d="M3 2.5h10A1.5 1.5 0 0 1 14.5 4v6A1.5 1.5 0 0 1 13 11.5H5.5L3 14V2.5z"
+                        stroke="currentColor"
+                        strokeWidth="1.25"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </div>
                   <span className="text-sm text-foreground truncate">{item}</span>
