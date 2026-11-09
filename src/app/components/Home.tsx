@@ -625,7 +625,8 @@ export default function Home() {
   const touchNotebookUpdatedAt = (index: 0 | 1 | 2) => {
     setNotebookUpdatedAt((current) => ({ ...current, [index]: Date.now() }));
   };
-  const [openSessions, setOpenSessions] = useState<Array<{ id: number; title: string; input: string; messages: Array<{ role: string; content: string }>; width?: number; height?: number }>>([]);
+  const [openSessions, setOpenSessions] = useState<Array<{ id: number; title: string; input: string; messages: Array<{ role: string; content: string }>; model: string; width?: number; height?: number }>>([]);
+  const [sessionModelDropdownId, setSessionModelDropdownId] = useState<number | null>(null);
   const [draggedChatTitle, setDraggedChatTitle] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [draggingSessionId, setDraggingSessionId] = useState<number | null>(null);
@@ -776,8 +777,13 @@ export default function Home() {
   const openChatSession = (title: string) => {
     setOpenSessions((prev) => {
       if (prev.some((s) => s.title === title)) return prev;
-      return [...prev, { id: Date.now() + Math.random(), title, input: "", messages: seedSessionMessages(title), width: 460, height: 440 }];
+      return [...prev, { id: Date.now() + Math.random(), title, input: "", messages: seedSessionMessages(title), model: selectedModel, width: 460, height: 440 }];
     });
+  };
+
+  const handleSessionModelChange = (id: number, model: string) => {
+    setOpenSessions((prev) => prev.map((s) => (s.id === id ? { ...s, model } : s)));
+    setSessionModelDropdownId(null);
   };
 
   const handleResizeStart = (e: React.MouseEvent, session: { id: number; width?: number; height?: number }) => {
@@ -794,6 +800,7 @@ export default function Home() {
 
   const closeSession = (id: number) => {
     setOpenSessions((prev) => prev.filter((s) => s.id !== id));
+    setSessionModelDropdownId((current) => (current === id ? null : current));
   };
 
   const handleSessionInputChange = (id: number, value: string) => {
@@ -982,7 +989,7 @@ export default function Home() {
 
           {/* MCP Feature Promo Popover - PatternFly Hint Style */}
           {showMcpPromo && (
-            <div className="absolute right-[-8px] top-[44px] z-50 w-[320px] animate-[slideInDown_0.3s_ease-out]">
+            <div className="absolute right-[-3px] top-[44px] z-50 w-[320px] animate-[slideInDown_0.3s_ease-out]">
               <div className="bg-white text-[#151515] rounded-[16px] border-2 border-[#5e40be] relative">
                 {/* Hint Title */}
                 <div className="flex items-start justify-between gap-2 px-6 pt-4 pb-2">
@@ -1240,47 +1247,7 @@ export default function Home() {
             <div className="flex-1 min-w-0 min-h-0 overflow-hidden relative">
             {openSessions.length > 0 ? (
               /* Parallel chat sessions workspace */
-              <div className="px-4 pb-4 pt-3 h-full overflow-y-auto">
-                {/* Model selector for sessions workspace */}
-                <div className="flex justify-end items-center h-10 mb-3 z-20">
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowModelDropdown(!showModelDropdown)}
-                      className="text-[14px] font-normal text-[#151515] bg-[rgba(199,199,199,0.25)] hover:bg-[rgba(199,199,199,0.4)] transition-colors flex items-center gap-1 rounded-full px-3 py-1"
-                    >
-                      <span>{selectedModel}</span>
-                      <div
-                        className="size-[9px] shrink-0 self-center bg-current"
-                        style={{
-                          WebkitMask: `url(${import.meta.env.BASE_URL}caret-down-solid.png) center / contain no-repeat`,
-                          mask: `url(${import.meta.env.BASE_URL}caret-down-solid.png) center / contain no-repeat`,
-                        }}
-                        aria-hidden="true"
-                      />
-                    </button>
-
-                    {showModelDropdown && (
-                      <div className="absolute top-full right-0 mt-2 bg-popover rounded-lg shadow-lg border border-border min-w-[160px] z-50">
-                        {models.map((model) => (
-                          <button
-                            key={model}
-                            onClick={() => {
-                              setSelectedModel(model);
-                              setShowModelDropdown(false);
-                            }}
-                            className={`w-full px-3 py-2 text-left text-sm hover:bg-secondary first:rounded-t-lg last:rounded-b-lg ${
-                              model === selectedModel ? "bg-secondary text-primary" : "text-foreground"
-                            }`}
-                          >
-                            {model}
-                            {model === selectedModel && " ✓"}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
+              <div className="p-4 h-full overflow-y-auto">
                 <div className="flex flex-wrap gap-4 items-start">
                   {openSessions.map((session) => {
                     const dropEdge =
@@ -1356,7 +1323,7 @@ export default function Home() {
 
                       {/* Session input */}
                       <div className="border-t border-border p-3 shrink-0">
-                        <div className="bg-input-background rounded-[16px] border border-border flex items-end gap-2 px-3 py-2">
+                        <div className="bg-input-background rounded-[16px] border border-border flex flex-col min-h-[76px] px-3 pt-3 pb-2">
                           <textarea
                             value={session.input}
                             onChange={(e) => handleSessionInputChange(session.id, e.target.value)}
@@ -1368,22 +1335,62 @@ export default function Home() {
                             }}
                             placeholder="Message this chat…"
                             rows={1}
-                            className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground resize-none max-h-[80px] min-h-[24px]"
+                            className="w-full bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground resize-none max-h-[80px] min-h-[24px]"
                           />
-                          <button
-                            onClick={() => handleSessionSend(session.id)}
-                            className="size-[32px] rounded-full hover:bg-muted/50 flex items-center justify-center transition-colors shrink-0"
-                            aria-label="Send"
-                          >
-                            <div className="size-[14px] shrink-0 flex items-center justify-center">
-                              <svg className="block size-[14px]" viewBox="0 0 512 512" aria-hidden="true">
-                                <path
-                                  fill={session.input.trim() ? "var(--primary)" : "var(--muted-foreground)"}
-                                  d="M498.1 5.6c10.1 7 15.4 19.1 13.5 31.2l-64 416c-1.5 9.7-7.4 18.2-16 23s-18.9 5.4-28 1.6L284 427.7l-68.5 74.1c-8.9 9.7-22.9 12.9-35.2 8.1S160 493.2 160 480l0-83.6c0-4 1.5-7.8 4.2-10.8L331.8 202.8c5.8-6.3 5.6-16-.4-22s-15.7-6.4-22-.7L106 360.8 17.7 316.6C7.1 311.3 .3 300.7 0 288.9s5.9-22.8 16.1-28.7l448-256c10.7-6.1 23.9-5.5 34 1.4z"
+                          <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                            <div className="relative">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSessionModelDropdownId((current) => (current === session.id ? null : session.id));
+                                }}
+                                className="text-[14px] font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-[rgba(199,199,199,0.25)] transition-colors flex items-center gap-1 rounded-full px-3 py-1"
+                              >
+                                <span>{session.model}</span>
+                                <div
+                                  className="size-[9px] shrink-0 self-center bg-current"
+                                  style={{
+                                    WebkitMask: `url(${import.meta.env.BASE_URL}caret-down-solid.png) center / contain no-repeat`,
+                                    mask: `url(${import.meta.env.BASE_URL}caret-down-solid.png) center / contain no-repeat`,
+                                  }}
+                                  aria-hidden="true"
                                 />
-                              </svg>
+                              </button>
+                              {sessionModelDropdownId === session.id && (
+                                <div className="absolute bottom-full left-0 mb-2 bg-popover rounded-lg shadow-lg border border-border min-w-[160px] z-50">
+                                  {models.map((model) => (
+                                    <button
+                                      key={model}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSessionModelChange(session.id, model);
+                                      }}
+                                      className={`w-full px-3 py-2 text-left text-sm hover:bg-secondary first:rounded-t-lg last:rounded-b-lg ${
+                                        model === session.model ? "bg-secondary text-primary" : "text-foreground"
+                                      }`}
+                                    >
+                                      {model}
+                                      {model === session.model && " ✓"}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          </button>
+                            <button
+                              onClick={() => handleSessionSend(session.id)}
+                              className="size-[32px] rounded-full hover:bg-muted/50 flex items-center justify-center transition-colors shrink-0"
+                              aria-label="Send"
+                            >
+                              <div className="size-[14px] shrink-0 flex items-center justify-center">
+                                <svg className="block size-[14px]" viewBox="0 0 512 512" aria-hidden="true">
+                                  <path
+                                    fill={session.input.trim() ? "var(--primary)" : "var(--muted-foreground)"}
+                                    d="M498.1 5.6c10.1 7 15.4 19.1 13.5 31.2l-64 416c-1.5 9.7-7.4 18.2-16 23s-18.9 5.4-28 1.6L284 427.7l-68.5 74.1c-8.9 9.7-22.9 12.9-35.2 8.1S160 493.2 160 480l0-83.6c0-4 1.5-7.8 4.2-10.8L331.8 202.8c5.8-6.3 5.6-16-.4-22s-15.7-6.4-22-.7L106 360.8 17.7 316.6C7.1 311.3 .3 300.7 0 288.9s5.9-22.8 16.1-28.7l448-256c10.7-6.1 23.9-5.5 34 1.4z"
+                                  />
+                                </svg>
+                              </div>
+                            </button>
+                          </div>
                         </div>
                       </div>
 
