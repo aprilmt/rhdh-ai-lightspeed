@@ -1344,7 +1344,7 @@ export default function Home() {
                                   e.stopPropagation();
                                   setSessionModelDropdownId((current) => (current === session.id ? null : session.id));
                                 }}
-                                className="text-[14px] font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-[rgba(199,199,199,0.25)] transition-colors flex items-center gap-1 rounded-full px-3 py-1"
+                                className="text-[14px] font-medium text-muted-foreground hover:text-foreground bg-[rgba(199,199,199,0.25)] hover:bg-[rgba(199,199,199,0.4)] transition-colors flex items-center gap-1 rounded-full px-3 py-1"
                               >
                                 <span>{session.model}</span>
                                 <div
